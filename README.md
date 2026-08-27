@@ -1,88 +1,68 @@
-# Judgement
+# Judgement Online
 
-![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)
-![License](https://img.shields.io/badge/license-MIT-green.svg)
-![Graphify](https://img.shields.io/badge/skill-graphify-purple.svg)
-![gstack](https://img.shields.io/badge/skill-gstack-orange.svg)
+`Judgement` is now scaffolded as a browser-based multiplayer card game with a Node.js + Socket.io backend and a React client.
 
-**Judgement** is a project developed by [SlanderDome](https://github.com/SlanderDome), pre-configured with **Graphify** and **gstack** agent skills.
+## Overview
 
----
+This first implementation milestone includes:
 
-## 📖 Overview
+- a monorepo workspace with `server/` and `client/`
+- Socket.io room creation, room joining, and reconnect-friendly player IDs
+- an initial room state engine that starts round one and deals cards
+- a React/Vite UI for creating or joining rooms and viewing synced game state
 
-Brief description of what **Judgement** does, its primary goals, and key capabilities.
+## Tech Stack
 
----
+- `server/`: Node.js, Express, Socket.io
+- `client/`: React, Vite, Socket.io Client
+- planning docs: `implementation_plan.md` and `judgement_online_design.md`
 
-## 🤖 Agent Setup & Tooling
+## Project Structure
 
-This repository is initialized with local agent skills under `.agents/skills/`:
-
-- **[Graphify](file:///d:/Judgement/.agents/skills/graphify/SKILL.md)**: Builds AST knowledge graphs of the codebase to optimize context lookup and structural dependency tracking for AI coding agents.
-- **[gstack](file:///d:/Judgement/.agents/skills/gstack/SKILL.md)**: Agent workflow suite for architecture planning, design review, QA testing, and shipping.
-
----
-
-## ✨ Features
-
-- **Feature 1**: Description of key capability.
-- **Feature 2**: Description of key capability.
-- **Feature 3**: Description of key capability.
-
----
-
-## 🛠️ Tech Stack
-
-- **Framework**: Node.js / TypeScript / Python
-- **Agent Tooling**: Graphify (`.agents/skills/graphify`) & gstack (`.agents/skills/gstack`)
-
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-Ensure you have the following installed on your machine:
-- [Node.js](https://nodejs.org/) (v18+) or [Python](https://www.python.org/) (v3.10+)
-- `git`
-- `graphify` CLI tool (installed via `uv tool install graphifyy` or `pipx install graphifyy`)
-
-### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/SlanderDome/Judgement.git
-   cd Judgement
-   ```
-
-2. **Initialize Codebase Graph**
-   ```bash
-   graphify update .
-   ```
-
----
-
-## 📂 Project Structure
-
-```
+```text
 Judgement/
-├── .agents/
-│   └── skills/
-│       ├── graphify/    # Graphify knowledge graph skill
-│       └── gstack/      # gstack workflow skills suite
-├── README.md
-└── ...
+|-- client/
+|   `-- src/
+|       |-- components/
+|       |-- context/
+|       `-- hooks/
+|-- server/
+|   `-- src/
+|       |-- game/
+|       `-- socket/
+|-- implementation_plan.md
+|-- judgement_online_design.md
+`-- README.md
 ```
 
----
+## Getting Started
 
-## 🤝 Contributing
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+2. Start the backend:
+   ```bash
+   npm run dev:server
+   ```
+3. Start the frontend in a second terminal:
+   ```bash
+   npm run dev:client
+   ```
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+The backend listens on `http://localhost:3001` and the client dev server on `http://localhost:3000`.
 
----
+## Current Scope
 
-## 📜 License
+Implemented:
 
-Distributed under the MIT License. See `LICENSE` for details.
+- room lifecycle scaffolding
+- initial finite state structure
+- first-round dealing and trump assignment
+- responsive lobby and room UI
+
+Next up:
+
+- bidding flow and forbidden-bid validation
+- trick play rules and scoring
+- turn timers, auto-play fallback, and reconnection recovery polish
