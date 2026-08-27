@@ -15,7 +15,7 @@
 - **Server-Authoritative State**: Prevents cheating and handles edge cases deterministically.
 - **Reconnection Resilience**: Unique persistent Player IDs stored in `localStorage` allow players to seamlessly reconnect mid-game without losing hands or scores.
 - **AFK / Disconnect Protection**: 20-second turn timers with automatic fallback play (lowest legal bid / lowest-risk legal card).
-- **Dynamic Card Scaling**: Ascending phase (1 card → max cards) to Descending phase (max cards → 1 card) with automatic adjustment when players join or leave between rounds.
+- **Admin-Controlled Card Scaling**: Instead of automatic phases, the Admin manually configures the number of cards/tricks for the next round (up to the maximum possible for active players) and selects active players for each round.
 
 ---
 
@@ -29,14 +29,14 @@ Derived from [`new.md`](file:///d:/Judgement/new.md):
 - **Trump Rotation**: Fixed sequence by round:  
   `♠ Spades → ♦ Diamonds → ♣ Clubs → ♥ Hearts → (Repeat)`
 
-### 2.2 Dynamic Round & Player Scaling
+### 2.2 Admin-Controlled Round & Player Setup
 - **Max Cards Formula**: `floor(52 / active_players)`
-- **Ascending Phase**: Starts at 1 card and increases by 1 card per round.
-- **Ascending → Descending Switch**:
-  - At round end, the server calculates `next_card_count = current_card_count + 1` and evaluates `max_possible = floor(52 / next_active_players)`.
-  - If `next_card_count <= max_possible`, ascending continues.
-  - If `next_card_count > max_possible` (or if a new player joined making target card count impossible), **Ascending permanently locks**, and the game switches to **Descending**, setting `next_card_count = max_possible`.
-  - Once Descending begins, it decreases by 1 card per round down to 1 card.
+- **Round Setup & Configuration**:
+  - At the end of every round, the game transitions to a round setup interface for the Admin.
+  - The Admin configures the parameters for the next round before it starts:
+    - **Cards in Round**: The number of cards dealt to each player for the upcoming round. This value must be between `1` and `floor(52 / active_players)`.
+    - **Active Players**: The Admin can toggle player participation. Players toggled "off" become inactive/spectating for that round (receiving 0 points) but remain in the room. New players who joined mid-game can be toggled "on" to start participating.
+    - **Trump Suit**: By default, follows the standard rotation (`♠ Spades → ♦ Diamonds → ♣ Clubs → ♥ Hearts`), but the Admin can override it if they wish.
 
 ### 2.3 Bidding Rules & The Final Bidder Constraint
 - Public, sequential bidding following the round's rotating player order.

@@ -113,7 +113,7 @@ We performed a **CEO Plan Review** (`/plan-ceo-review`) on the Judgement Online 
 ### 5.1 Accepted Scope (Added to Plan)
 - **Node.js + Socket.io Server Engine**: In-memory FSM room manager, per-room turn queue lock, 15-minute abandoned room cleanup.
 - **React SPA & SocketContext**: Stateful game table, card hand hover/playable indicators, connection badge, turn timer progress bar.
-- **Ascending → Descending Engine**: Automatic max card calculation (`floor(52 / active_players)`) with dynamic phase locking.
+- **Admin-Controlled Round Engine**: Manual card configuration, active player toggles, and trump suit configuration between rounds.
 - **20-Second Auto-Play Protection**: Server-driven turn fallback for bidding (lowest legal bid) and card play (lowest-risk legal card).
 - **Interactive Bidding Assistant**: Real-time math visualizer highlighting forbidden bid.
 - **End-of-Game Awards**: Post-game modal with awards ("Most Accurate Bidder", "Trump Master", "Unluckiest Player") & 1-click Rematch.
@@ -207,3 +207,40 @@ npm --prefix server test:integration
 | Unresolved decisions | 0                                           |
 +====================================================================+
 ```
+
+## 8. Implementation Plan: Tech Stack & Scaffolding
+
+### Goal
+Set up the monolithic file structure containing the Node.js backend and React frontend, ready for the business logic implementation.
+
+### Proposed Changes
+
+#### Server
+- **Tech**: Node.js, Express, Socket.io
+- **Structure**:
+  - `server/package.json`
+  - `server/src/index.js` (Entry point)
+  - `server/src/game/roomManager.js`
+  - `server/src/game/stateEngine.js`
+  - `server/src/game/rules.js`
+  - `server/src/socket/handlers.js`
+
+#### Client
+- **Tech**: React (via Vite), Socket.io-client, TailwindCSS (if permitted, otherwise vanilla CSS). *Note: Using Vanilla CSS as per default instructions unless you request otherwise.*
+- **Structure**:
+  - `client/package.json`
+  - `client/vite.config.js`
+  - `client/src/main.jsx`
+  - `client/src/App.jsx`
+  - `client/src/context/SocketContext.jsx`
+  - `client/src/hooks/useGameState.js`
+  - `client/src/components/...`
+
+### Open Questions
+1. Should we use Vite for the React frontend scaffolding? (Recommended)
+2. Do you have a preference for using TailwindCSS or should we stick to Vanilla CSS as per standard guidelines?
+
+### Verification Plan
+- Start the server on port 3001.
+- Start the Vite dev server on port 3000.
+- Verify that the client can establish a basic WebSocket connection to the server.
