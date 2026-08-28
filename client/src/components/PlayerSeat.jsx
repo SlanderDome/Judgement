@@ -12,6 +12,7 @@ export function PlayerSeat({
 }) {
   const hue = (player.seatIndex * 137.508) % 360;
   const cardCount = player.handCount ?? player.hand?.length ?? 0;
+  const hasBid = player.currentBid != null;
 
   return (
     <motion.div
@@ -38,17 +39,29 @@ export function PlayerSeat({
         )}
         {isTurn && timerEndsAt && <TurnTimerBar endsAt={timerEndsAt} />}
       </div>
-      <span className="seat-name">
-        {player.nickname}
-        {isClient && <em className="seat-you">you</em>}
-      </span>
-      {!isClient && (
-        <span className="seat-cards">
-          {cardCount} {cardCount === 1 ? "card" : "cards"}
+      <div className="seat-info">
+        <span className="seat-name">
+          {player.nickname}
+          {isClient && <em className="seat-you">you</em>}
         </span>
-      )}
+        {hasBid ? (
+          <span
+            className="seat-bid-badge"
+            title={`Bid: ${player.currentBid}, Tricks won: ${player.tricksWon}`}
+          >
+            Bid {player.currentBid} · {player.tricksWon} won
+          </span>
+        ) : (
+          !isClient && (
+            <span className="seat-cards">
+              {cardCount} {cardCount === 1 ? "card" : "cards"}
+            </span>
+          )
+        )}
+      </div>
     </motion.div>
   );
 }
+
 
 

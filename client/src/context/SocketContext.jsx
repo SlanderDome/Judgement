@@ -3,7 +3,11 @@ import { io } from "socket.io-client";
 
 const SocketContext = createContext(null);
 
-const socket = io("http://localhost:3001", {
+const SERVER_URL =
+  import.meta.env.VITE_SOCKET_URL ||
+  (import.meta.env.DEV ? "http://localhost:3001" : undefined);
+
+const socket = io(SERVER_URL, {
   autoConnect: true
 });
 

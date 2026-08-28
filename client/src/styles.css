@@ -559,6 +559,13 @@ input:focus {
   white-space: nowrap;
 }
 
+.seat-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+}
+
 .seat-name {
   display: flex;
   align-items: baseline;
@@ -584,6 +591,21 @@ input:focus {
 .seat-cards {
   font-size: 0.72rem;
   color: var(--ivory-soft);
+}
+
+.seat-bid-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--gold-light);
+  background: rgba(201, 162, 74, 0.16);
+  border: 1px solid rgba(201, 162, 74, 0.35);
+  border-radius: 999px;
+  padding: 0.08rem 0.45rem;
+  white-space: nowrap;
+  line-height: 1.2;
 }
 
 .seat-dealer {
@@ -631,7 +653,7 @@ input:focus {
 .table-felt {
   position: relative;
   flex: 1;
-  min-height: 320px;
+  min-height: clamp(180px, 34vh, 300px);
   border: 12px solid var(--wood);
   border-radius: 30px;
   overflow: hidden;
@@ -664,7 +686,7 @@ input:focus {
   position: relative;
   z-index: 1;
   height: 100%;
-  min-height: 300px;
+  min-height: 180px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -824,9 +846,11 @@ input:focus {
 /* ---------- Player hand ---------- */
 
 .self-area {
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  align-items: center;
+  gap: 4px;
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
@@ -834,7 +858,8 @@ input:focus {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  width: 100%;
 }
 
 .fan-hand {
@@ -844,8 +869,8 @@ input:focus {
   justify-content: center;
   width: 100%;
   max-width: 100%;
-  min-height: clamp(160px, 14rem, 230px);
-  padding: 44px 24px 14px;
+  min-height: clamp(140px, 18vh, 185px);
+  padding: 28px 20px 8px;
   perspective: 900px;
   overflow-x: auto;
   overflow-y: visible;

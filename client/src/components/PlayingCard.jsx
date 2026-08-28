@@ -49,7 +49,7 @@ export function PlayingCard({
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
       layoutId={card.id}
-      initial={{ opacity: 0, y: isTableCard ? -18 : 44, rotate: rotation - 8, scale: 0.92 }}
+      initial={{ opacity: 0, y: isTableCard ? -24 : -180, rotate: isTableCard ? rotation - 6 : 0, scale: isTableCard ? 0.88 : 0.65 }}
       animate={{ opacity: 1, y: isSelected ? y - 32 : y, rotate: isSelected ? 0 : rotation, scale: isSelected ? 1.12 : 1 }}
       whileHover={!disabled ? { y: y - 36, rotate: 0, scale: 1.15 } : undefined}
       whileTap={!disabled ? { scale: 0.97 } : undefined}

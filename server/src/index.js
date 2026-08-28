@@ -42,8 +42,9 @@ app.get("*", (req, res, next) => {
 });
 
 const port = Number(process.env.PORT || 3001);
+const host = "0.0.0.0";
 
-httpServer.listen(port, () => {
-  console.log(`Judgement server listening on port ${port}`);
+httpServer.listen(port, host, () => {
+  console.log(`Judgement server listening on ${host}:${port}`);
 });
 
