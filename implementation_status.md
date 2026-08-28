@@ -35,13 +35,14 @@ Date: August 27, 2026
 - Card play controls are wired to the server
 - Round summary and admin actions are visible in the UI
 
+## Admin Real-Time Round Control (Completed)
+
+- Refactored `startGame` and `advanceRound` in `server/src/game/stateEngine.js` to accept custom `cardsInRound` and `trumpSuit` parameters.
+- Added `action: "end_game"` payload support in `advanceRound` allowing host to end matches cleanly anytime.
+- Updated `server/src/game/roomManager.js` and `server/src/socket/handlers.js` to pass options from `game:start` and `game:next_round` socket events.
+- Built `<AdminRoundControl>` React UI component allowing host to adjust card count stepper $[1 \dots \lfloor 52 / N \rfloor]$ and select trump suit in Lobby and Round Summary states.
+
 ## Verification
 
-- Server files pass `node --check`
-- Client builds successfully with `npm --workspace client run build`
-
-## Current Focus
-
-- The project is functional enough to play through the basic loop
-- UI polish is intentionally secondary right now
-- Next work should stay focused on gameplay reliability and edge cases
+- Server files pass `node --check` with 0 errors.
+- Client builds cleanly with `npm --workspace client run build` (56 modules transformed in 153ms).

@@ -1,12 +1,15 @@
-import { dealCards, getMaxCardsForPlayers, getTrumpSuit } from "./rules.js";
+import { dealCards, getMaxCardsForPlayers, getTrumpSuit, normalizeSuit } from "./rules.js";
 
 export const ROOM_STATUS = {
   LOBBY: "LOBBY",
+  PRE_BIDDING: "PRE_BIDDING",
   BIDDING: "BIDDING",
   TRICK_PLAYING: "TRICK_PLAYING",
   ROUND_SUMMARY: "ROUND_SUMMARY",
   GAME_OVER: "GAME_OVER"
 };
+
+const TURN_TIMEOUT_MS = 20000;
 
 export function createPlayer({ playerId, nickname, socketId, seatIndex }) {
   return {
@@ -120,14 +123,24 @@ function dealRound(room) {
   });
 }
 
-function setBiddingState(room) {
-  room.status = ROOM_STATUS.BIDDING;
+function prepareRound(room) {
+  room.status = ROOM_STATUS.PRE_BIDDING;
   room.currentRound = createEmptyCurrentRound();
-  room.gameConfig.currentTurnIndex = 0;
-  room.timer = {
-    endsAt: Date.now() + 20000
-  };
+  room.gameConfig.currentTurnIndex = room.gameConfig.dealerIndex;
+  room.timer = { endsAt: null };
   dealRound(room);
+  room.updatedAt = Date.now();
+  return room;
+}
+
+export function startBidding(room) {
+  if (room.status !== ROOM_STATUS.PRE_BIDDING) {
+    throw new Error("Bidding cannot be started right now.");
+  }
+
+  room.status = ROOM_STATUS.BIDDING;
+  room.gameConfig.currentTurnIndex = room.gameConfig.dealerIndex;
+  room.timer = { endsAt: Date.now() + TURN_TIMEOUT_MS };
   room.updatedAt = Date.now();
   return room;
 }
@@ -168,15 +181,15 @@ export function reconnectPlayer(room, playerId, socketId, nickname) {
   return player;
 }
 
-export function startGame(room) {
+export function startGame(room, options = {}) {
   const activePlayers = room.players.filter((player) => player.isOnline || room.status !== ROOM_STATUS.LOBBY);
   room.gameConfig.maxCards = getMaxCardsForPlayers(activePlayers.length);
   room.gameConfig.phase = "ASCENDING";
-  room.gameConfig.cardsInRound = 1;
+  room.gameConfig.cardsInRound = options.cardsInRound ? Math.min(Math.max(1, Number(options.cardsInRound)), room.gameConfig.maxCards) : 1;
   room.gameConfig.roundNumber = 1;
-  room.gameConfig.trumpSuit = getTrumpSuit(1);
-  room.gameConfig.currentTurnIndex = 0;
-  return setBiddingState(room);
+  room.gameConfig.trumpSuit = normalizeSuit(options.trumpSuit) || getTrumpSuit(1);
+  room.gameConfig.dealerIndex = 0;
+  return prepareRound(room);
 }
 
 export function getCurrentPlayer(room) {
@@ -243,11 +256,11 @@ export function submitBid(room, playerId, bid) {
   const nextTurnIndex = room.gameConfig.currentTurnIndex + 1;
   if (nextTurnIndex >= room.players.length) {
     room.status = ROOM_STATUS.TRICK_PLAYING;
-    room.gameConfig.currentTurnIndex = 0;
+    room.gameConfig.currentTurnIndex = room.gameConfig.dealerIndex;
     room.timer.endsAt = null;
   } else {
     room.gameConfig.currentTurnIndex = nextTurnIndex;
-    room.timer.endsAt = Date.now() + 20000;
+    room.timer.endsAt = Date.now() + TURN_TIMEOUT_MS;
   }
 
   room.currentRound.forbiddenBidForFinalPlayer =
@@ -325,8 +338,8 @@ function resolveTrick(room) {
       leadSuit: null,
       cardsPlayed: []
     };
-    room.gameConfig.currentTurnIndex = winner.seatIndex;
-    room.timer.endsAt = Date.now() + 20000;
+    room.gameConfig.currentTurnIndex = room.players.indexOf(winner);
+    room.timer.endsAt = Date.now() + TURN_TIMEOUT_MS;
   }
 
   room.updatedAt = Date.now();
@@ -373,7 +386,7 @@ export function playCard(room, playerId, cardId) {
   }
 
   room.gameConfig.currentTurnIndex = (room.gameConfig.currentTurnIndex + 1) % room.players.length;
-  room.timer.endsAt = Date.now() + 20000;
+  room.timer.endsAt = Date.now() + TURN_TIMEOUT_MS;
   room.updatedAt = Date.now();
   return room;
 }
@@ -438,30 +451,85 @@ export function handleTurnTimeout(room) {
   return room;
 }
 
-export function advanceRound(room) {
+export function advanceRound(room, options = {}) {
   if (room.status !== ROOM_STATUS.ROUND_SUMMARY) {
     throw new Error("Round progression is not available right now.");
   }
 
-  const nextRoundConfig = buildNextRoundConfig(room);
-  if (!nextRoundConfig) {
+  if (options.action === "end_game") {
     room.status = ROOM_STATUS.GAME_OVER;
     room.timer.endsAt = null;
     room.updatedAt = Date.now();
     return room;
   }
 
-  room.gameConfig.roundNumber += 1;
-  room.gameConfig.phase = nextRoundConfig.phase;
-  room.gameConfig.cardsInRound = nextRoundConfig.cardsInRound;
-  room.gameConfig.trumpSuit = getTrumpSuit(room.gameConfig.roundNumber);
-  room.gameConfig.currentTurnIndex = 0;
-  room.currentRound = createEmptyCurrentRound();
-  room.status = ROOM_STATUS.BIDDING;
-  room.timer = {
-    endsAt: Date.now() + 20000
-  };
-  dealRound(room);
+  const nextRoundNumber = room.gameConfig.roundNumber + 1;
+  const activePlayersCount = room.players.filter((p) => p.isOnline || p.isActiveInGame).length || room.players.length;
+  const maxAllowed = getMaxCardsForPlayers(activePlayersCount);
+
+  let nextCards = options.cardsInRound ? Number(options.cardsInRound) : null;
+  let nextPhase = room.gameConfig.phase;
+
+  if (!nextCards) {
+    const nextRoundConfig = buildNextRoundConfig(room);
+    if (!nextRoundConfig) {
+      room.status = ROOM_STATUS.GAME_OVER;
+      room.timer.endsAt = null;
+      room.updatedAt = Date.now();
+      return room;
+    }
+    nextCards = nextRoundConfig.cardsInRound;
+    nextPhase = nextRoundConfig.phase;
+  }
+
+  nextCards = Math.min(Math.max(1, nextCards), maxAllowed);
+
+  room.gameConfig.roundNumber = nextRoundNumber;
+  room.gameConfig.maxCards = maxAllowed;
+  room.gameConfig.phase = nextPhase;
+  room.gameConfig.cardsInRound = nextCards;
+  room.gameConfig.trumpSuit = normalizeSuit(options.trumpSuit) || getTrumpSuit(nextRoundNumber);
+  room.gameConfig.dealerIndex = (room.gameConfig.dealerIndex + 1) % room.players.length;
+  return prepareRound(room);
+}
+
+export function reorderPlayers(room, orderedPlayerIds) {
+  if (!Array.isArray(orderedPlayerIds)) {
+    throw new Error("Invalid playing order.");
+  }
+
+  const currentIds = room.players.map((player) => player.playerId);
+  const isPermutation =
+    orderedPlayerIds.length === currentIds.length &&
+    orderedPlayerIds.every((id) => currentIds.includes(id));
+
+  if (!isPermutation) {
+    throw new Error("Playing order must include every player exactly once.");
+  }
+
+  const allowedStatuses = [ROOM_STATUS.LOBBY, ROOM_STATUS.PRE_BIDDING, ROOM_STATUS.ROUND_SUMMARY];
+  if (!allowedStatuses.includes(room.status)) {
+    throw new Error("Playing order can only be changed between rounds.");
+  }
+
+  const leaderId = room.players[room.gameConfig.dealerIndex]?.playerId;
+  const currentId = room.players[room.gameConfig.currentTurnIndex]?.playerId;
+  const playersById = new Map(room.players.map((player) => [player.playerId, player]));
+
+  room.players = orderedPlayerIds.map((id) => playersById.get(id));
+  room.players.forEach((player, index) => {
+    player.seatIndex = index;
+  });
+
+  if (leaderId) {
+    room.gameConfig.dealerIndex = room.players.findIndex((player) => player.playerId === leaderId);
+  }
+
+  if (currentId) {
+    const nextIndex = room.players.findIndex((player) => player.playerId === currentId);
+    room.gameConfig.currentTurnIndex = nextIndex >= 0 ? nextIndex : 0;
+  }
+
   room.updatedAt = Date.now();
   return room;
 }
@@ -472,6 +540,7 @@ export function resetRoom(room) {
   room.gameConfig.roundNumber = 1;
   room.gameConfig.cardsInRound = 0;
   room.gameConfig.currentTurnIndex = 0;
+  room.gameConfig.dealerIndex = 0;
   room.gameConfig.trumpSuit = null;
   room.currentRound = createEmptyCurrentRound();
   room.timer = {

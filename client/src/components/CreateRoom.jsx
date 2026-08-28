@@ -21,7 +21,7 @@ export function CreateRoom({ onCreate }) {
           placeholder="Dealer name"
         />
       </label>
-      <button type="submit">Create room</button>
+      <button type="submit" className="btn-primary">Create room</button>
     </form>
   );
 }

@@ -31,7 +31,7 @@ export function JoinRoom({ onJoin }) {
           placeholder="Seat name"
         />
       </label>
-      <button type="submit">Join room</button>
+      <button type="submit" className="btn-primary">Join room</button>
     </form>
   );
 }

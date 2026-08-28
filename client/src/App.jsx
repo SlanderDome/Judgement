@@ -10,32 +10,38 @@ export default function App() {
   return (
     <main className="app-shell">
       <header className="topbar">
-        <div>
-          <p className="eyebrow">Multiplayer trick-taking</p>
+        <div className="brand-block">
           <h1 className="brand">Judgement</h1>
+          <span className="brand-sub">Trick-taking</span>
         </div>
-        <ConnectionBadge isConnected={isConnected} />
+        <div className="topbar-actions">
+          <ConnectionBadge isConnected={isConnected} />
+        </div>
       </header>
 
       {errorMessage && <div className="error-banner">{errorMessage}</div>}
 
       {!roomState ? (
         <section className="lobby-grid">
+          <div className="lobby-hero">
+            <h1>Judgement</h1>
+            <p>A social trick-taking game — bid your tricks and land them exactly.</p>
+          </div>
           <CreateRoom onCreate={actions.createRoom} />
           <JoinRoom onJoin={actions.joinRoom} />
         </section>
       ) : (
-        <section className="room-stage">
-          <GameBoard
-            roomState={roomState}
-            clientPlayerId={clientPlayerId}
-            onStartGame={actions.startGame}
-            onSubmitBid={actions.submitBid}
-            onPlayCard={actions.playCard}
-            onNextRound={actions.nextRound}
-            onRematch={actions.rematch}
-          />
-        </section>
+        <GameBoard
+          roomState={roomState}
+          clientPlayerId={clientPlayerId}
+          onStartGame={actions.startGame}
+          onSubmitBid={actions.submitBid}
+          onPlayCard={actions.playCard}
+          onStartBidding={actions.startBidding}
+          onReorderPlayers={actions.reorderPlayers}
+          onNextRound={actions.nextRound}
+          onRematch={actions.rematch}
+        />
       )}
     </main>
   );

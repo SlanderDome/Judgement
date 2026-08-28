@@ -45,6 +45,15 @@ export function getTrumpSuit(roundNumber) {
   return SUITS[(roundNumber - 1) % SUITS.length];
 }
 
+export function normalizeSuit(suit) {
+  if (typeof suit !== "string") {
+    return suit;
+  }
+
+  const upper = suit.trim().toUpperCase();
+  return SUITS.includes(upper) ? upper : suit;
+}
+
 export function dealCards(players, cardsInRound) {
   const deck = shuffleDeck(createDeck());
   const hands = new Map();

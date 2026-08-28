@@ -1,5 +1,21 @@
+import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
+
 export function BiddingOverlay({ roomState, clientPlayerId, onSubmitBid }) {
-  if (roomState.status !== "BIDDING") {
+  const [ready, setReady] = useState(false);
+  const isBidding = roomState.status === "BIDDING";
+
+  useEffect(() => {
+    if (!isBidding) {
+      setReady(false);
+      return undefined;
+    }
+
+    const timerId = window.setTimeout(() => setReady(true), 400);
+    return () => window.clearTimeout(timerId);
+  }, [isBidding]);
+
+  if (!isBidding || !ready) {
     return null;
   }
 
@@ -14,17 +30,23 @@ export function BiddingOverlay({ roomState, clientPlayerId, onSubmitBid }) {
   const bidOptions = Array.from({ length: cardsInRound + 1 }, (_value, index) => index);
 
   return (
-    <section className="panel bidding-panel">
-      <div className="panel-header">
+    <motion.section
+      className="bidding-panel"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ type: "spring", stiffness: 320, damping: 30 }}
+      aria-live="polite"
+    >
+      <div className="bidding-head">
         <div>
           <p className="eyebrow">Bidding</p>
-          <h2>Pick a legal bid</h2>
+          <h3>{isMyTurn ? "Call your bid" : `${currentPlayer?.nickname ?? "Waiting"} is bidding`}</h3>
         </div>
-        <span>{isMyTurn ? "Your turn" : `${currentPlayer?.nickname ?? "Waiting"} to bid`}</span>
+        <span className="chip">
+          Table total <strong>{bidTotal}</strong>
+        </span>
       </div>
-      <p className="muted">
-        The final bidder cannot pick the forbidden total. Current table total: {bidTotal}.
-      </p>
+
       <div className="bid-grid">
         {bidOptions.map((bid) => {
           const isForbidden = forbiddenBid !== null && bid === forbiddenBid;
@@ -37,11 +59,11 @@ export function BiddingOverlay({ roomState, clientPlayerId, onSubmitBid }) {
               onClick={() => onSubmitBid(bid)}
               disabled={!isMyTurn || isForbidden}
             >
-              {isForbidden ? `${bid} (forbidden)` : bid}
+              {bid}
             </button>
           );
         })}
       </div>
-    </section>
+    </motion.section>
   );
 }

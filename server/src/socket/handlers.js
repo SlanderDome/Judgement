@@ -96,9 +96,9 @@ export function registerSocketHandlers(io) {
       }
     });
 
-    socket.on("game:start", ({ roomId, playerId } = {}) => {
+    socket.on("game:start", ({ roomId, playerId, cardsInRound, trumpSuit } = {}) => {
       try {
-        const room = roomManager.startGame(roomId, playerId);
+        const room = roomManager.startGame(roomId, playerId, { cardsInRound, trumpSuit });
         emitRoomState(io, room);
         scheduleRoomTimeout(io, roomId);
       } catch (error) {
@@ -126,9 +126,29 @@ export function registerSocketHandlers(io) {
       }
     });
 
-    socket.on("game:next_round", ({ roomId, playerId } = {}) => {
+    socket.on("game:start_bidding", ({ roomId, playerId } = {}) => {
       try {
-        const room = roomManager.advanceRound(roomId, playerId);
+        const room = roomManager.startBidding(roomId, playerId);
+        emitRoomState(io, room);
+        scheduleRoomTimeout(io, roomId);
+      } catch (error) {
+        emitError(socket, error.message, "START_BIDDING_REJECTED");
+      }
+    });
+
+    socket.on("game:reorder_players", ({ roomId, playerId, orderedPlayerIds } = {}) => {
+      try {
+        const room = roomManager.reorderPlayers(roomId, playerId, orderedPlayerIds);
+        emitRoomState(io, room);
+        scheduleRoomTimeout(io, roomId);
+      } catch (error) {
+        emitError(socket, error.message, "REORDER_REJECTED");
+      }
+    });
+
+    socket.on("game:next_round", ({ roomId, playerId, cardsInRound, trumpSuit, action } = {}) => {
+      try {
+        const room = roomManager.advanceRound(roomId, playerId, { cardsInRound, trumpSuit, action });
         emitRoomState(io, room);
         scheduleRoomTimeout(io, roomId);
       } catch (error) {

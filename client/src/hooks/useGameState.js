@@ -62,14 +62,15 @@ export function useGameState() {
     });
   }
 
-  function startGame() {
+  function startGame(options = {}) {
     if (!roomState || !clientPlayerId) {
       return;
     }
 
     socket.emit("game:start", {
       roomId: roomState.roomId,
-      playerId: clientPlayerId
+      playerId: clientPlayerId,
+      ...options
     });
   }
 
@@ -97,14 +98,38 @@ export function useGameState() {
     });
   }
 
-  function nextRound() {
+  function startBidding() {
+    if (!roomState || !clientPlayerId) {
+      return;
+    }
+
+    socket.emit("game:start_bidding", {
+      roomId: roomState.roomId,
+      playerId: clientPlayerId
+    });
+  }
+
+  function reorderPlayers(orderedPlayerIds) {
+    if (!roomState || !clientPlayerId) {
+      return;
+    }
+
+    socket.emit("game:reorder_players", {
+      roomId: roomState.roomId,
+      playerId: clientPlayerId,
+      orderedPlayerIds
+    });
+  }
+
+  function nextRound(options = {}) {
     if (!roomState || !clientPlayerId) {
       return;
     }
 
     socket.emit("game:next_round", {
       roomId: roomState.roomId,
-      playerId: clientPlayerId
+      playerId: clientPlayerId,
+      ...options
     });
   }
 
@@ -130,6 +155,8 @@ export function useGameState() {
       startGame,
       submitBid,
       playCard,
+      startBidding,
+      reorderPlayers,
       nextRound,
       rematch
     }

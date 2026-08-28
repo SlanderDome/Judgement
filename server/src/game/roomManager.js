@@ -8,8 +8,10 @@ import {
   markPlayerDisconnected,
   reconnectPlayer,
   playCard,
+  reorderPlayers as reorderRoomPlayers,
   sanitizeRoomForPlayer,
   resetRoom,
+  startBidding as startBiddingPhase,
   startGame,
   submitBid
 } from "./stateEngine.js";
@@ -104,7 +106,7 @@ export class RoomManager {
     return this.rooms.get(roomId) ?? null;
   }
 
-  startGame(roomId, playerId) {
+  startGame(roomId, playerId, options = {}) {
     const room = this.getRoom(roomId);
 
     if (!room) {
@@ -119,7 +121,7 @@ export class RoomManager {
       throw new Error("At least 2 players are required to start.");
     }
 
-    return startGame(room);
+    return startGame(room, options);
   }
 
   submitBid(roomId, playerId, bid) {
@@ -146,7 +148,37 @@ export class RoomManager {
     return room;
   }
 
-  advanceRound(roomId, playerId) {
+  startBidding(roomId, playerId) {
+    const room = this.getRoom(roomId);
+
+    if (!room) {
+      throw new Error("Room not found.");
+    }
+
+    if (room.adminPlayerId !== playerId) {
+      throw new Error("Only the room admin can start bidding.");
+    }
+
+    startBiddingPhase(room);
+    return room;
+  }
+
+  reorderPlayers(roomId, playerId, orderedPlayerIds) {
+    const room = this.getRoom(roomId);
+
+    if (!room) {
+      throw new Error("Room not found.");
+    }
+
+    if (room.adminPlayerId !== playerId) {
+      throw new Error("Only the room admin can change the playing order.");
+    }
+
+    reorderRoomPlayers(room, orderedPlayerIds);
+    return room;
+  }
+
+  advanceRound(roomId, playerId, options = {}) {
     const room = this.getRoom(roomId);
 
     if (!room) {
@@ -157,7 +189,7 @@ export class RoomManager {
       throw new Error("Only the room admin can advance the round.");
     }
 
-    advanceRound(room);
+    advanceRound(room, options);
     return room;
   }
 
