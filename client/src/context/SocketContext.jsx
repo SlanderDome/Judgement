@@ -11,6 +11,10 @@ export function SocketProvider({ children }) {
   const [isConnected, setIsConnected] = useState(socket.connected);
 
   useEffect(() => {
+    if (socket.connected) {
+      setIsConnected(true);
+    }
+
     function handleConnect() {
       setIsConnected(true);
     }
