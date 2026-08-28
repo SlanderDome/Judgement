@@ -8,7 +8,7 @@
   --ink: #171610;
   --ivory: #f6efe1;
   --ivory-soft: rgba(246, 239, 225, 0.68);
-  --ivory-mute: rgba(246, 239, 225, 0.42);
+  --ivory-mute: rgba(246, 239, 225, 0.62);
   --ivory-faint: rgba(246, 239, 225, 0.12);
 
   --gold: #c9a24a;
@@ -55,6 +55,7 @@ body {
   min-height: 100vh;
   color: var(--ivory);
   font-family: var(--font-body);
+  line-height: 1.5;
   background:
     radial-gradient(120% 90% at 50% 0%, #0d2b24 0%, #071b16 48%, #04110d 100%);
   -webkit-font-smoothing: antialiased;
@@ -71,7 +72,7 @@ button {
   border: 1px solid transparent;
   border-radius: var(--radius);
   padding: 0.62rem 1.05rem;
-  min-height: 42px;
+  min-height: 44px;
   font-weight: 700;
   letter-spacing: 0.01em;
   cursor: pointer;
