@@ -1,24 +1,24 @@
 const SUIT_PIPS = {
-  SPADES: { pip: "♠", red: false },
-  DIAMONDS: { pip: "♦", red: true },
-  CLUBS: { pip: "♣", red: false },
-  HEARTS: { pip: "♥", red: true }
+  SPADES: { pip: "♠", name: "Spades", red: false },
+  DIAMONDS: { pip: "♦", name: "Diamonds", red: true },
+  CLUBS: { pip: "♣", name: "Clubs", red: false },
+  HEARTS: { pip: "♥", name: "Hearts", red: true },
+  NO_TRUMP: { pip: "NT", name: "No Trump", red: false }
 };
 
 export function TrumpIndicator({ roomState }) {
-  const trumpSuit = roomState.gameConfig.trumpSuit;
-  const meta = SUIT_PIPS[trumpSuit];
+  const trumpSuit = roomState.gameConfig?.trumpSuit;
+  if (!trumpSuit) return null;
 
-  if (!trumpSuit || !meta) {
-    return null;
-  }
+  const meta = SUIT_PIPS[trumpSuit] || { pip: trumpSuit, name: trumpSuit, red: false };
 
   return (
-    <div className={`trump-pill ${meta.red ? "is-red" : ""}`}>
-      <span className="suit" aria-hidden="true">
+    <span className={`trump-tag ${meta.red ? "trump-tag--red" : ""}`}>
+      <span className="trump-label">Trump</span>
+      <span className="trump-pip" aria-label={meta.name}>
         {meta.pip}
       </span>
-      <span>Trump</span>
-    </div>
+    </span>
   );
 }
+

@@ -21,6 +21,8 @@ export function PlayingCard({
   rotation = 0,
   y = 0,
   onClick,
+  onMouseEnter,
+  onMouseLeave,
   onDragStart,
   onDragEnd
 }) {
@@ -44,15 +46,24 @@ export function PlayingCard({
       ].join(" ")}
       disabled={disabled || isTableCard || !onClick}
       onClick={onClick}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      layoutId={card.id}
       initial={{ opacity: 0, y: isTableCard ? -18 : 44, rotate: rotation - 8, scale: 0.92 }}
-      animate={{ opacity: 1, y, rotate: rotation, scale: isSelected ? 1.09 : 1 }}
-      whileHover={!disabled ? { y: y - 22, rotate: rotation * 0.45, scale: isSelected ? 1.12 : 1.05 } : undefined}
-      whileTap={!disabled ? { scale: 0.98 } : undefined}
+      animate={{ opacity: 1, y: isSelected ? y - 32 : y, rotate: isSelected ? 0 : rotation, scale: isSelected ? 1.12 : 1 }}
+      whileHover={!disabled ? { y: y - 36, rotate: 0, scale: 1.15 } : undefined}
+      whileTap={!disabled ? { scale: 0.97 } : undefined}
       drag={isDraggable && !disabled}
       dragSnapToOrigin={isDraggable}
-      dragElastic={0.18}
+      dragElastic={0.16}
       dragMomentum={false}
-      whileDrag={{ scale: 1.1, zIndex: 120 }}
+      whileDrag={{
+        scale: 1.14,
+        zIndex: 150,
+        rotate: 0,
+        y: 0,
+        boxShadow: "0 24px 48px rgba(0, 0, 0, 0.5), 0 0 0 3px var(--gold)"
+      }}
       onDragStart={onDragStart}
       onDragEnd={(event, info) => onDragEnd?.(info)}
       transition={{ type: "spring", stiffness: 360, damping: 28, delay }}
@@ -64,7 +75,7 @@ export function PlayingCard({
         <em>{suit.pip}</em>
       </span>
       <span className="card-art" aria-hidden="true">
-        {suit.pip}
+        {isFace ? card.label : suit.pip}
       </span>
       <span className="card-corner card-corner-bottom">
         <strong>{card.label}</strong>
@@ -73,3 +84,4 @@ export function PlayingCard({
     </motion.button>
   );
 }
+

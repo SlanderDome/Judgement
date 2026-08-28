@@ -11,7 +11,7 @@ export default function App() {
     <main className="app-shell">
       <header className="topbar">
         <div className="brand-block">
-          <h1 className="brand">Judgement</h1>
+          <h1 className="brand">JUDGEMENT</h1>
           <span className="brand-sub">Trick-taking</span>
         </div>
         <div className="topbar-actions">
@@ -24,8 +24,8 @@ export default function App() {
       {!roomState ? (
         <section className="lobby-grid">
           <div className="lobby-hero">
-            <h1>Judgement</h1>
-            <p>A social trick-taking game — bid your tricks and land them exactly.</p>
+            <h1>JUDGEMENT</h1>
+            <p>Bid your tricks, land them exactly.</p>
           </div>
           <CreateRoom onCreate={actions.createRoom} />
           <JoinRoom onJoin={actions.joinRoom} />

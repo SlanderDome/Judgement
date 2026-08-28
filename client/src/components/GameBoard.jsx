@@ -6,8 +6,19 @@ import { PlayerSeat } from "./PlayerSeat.jsx";
 import { PlayingHand } from "./PlayingHand.jsx";
 import { TrumpIndicator } from "./TrumpIndicator.jsx";
 import { TrickTable } from "./TrickTable.jsx";
-import { TurnOrder } from "./TurnOrder.jsx";
-import { TurnTimerBar } from "./TurnTimerBar.jsx";
+
+const SEAT_SLOTS = {
+  1: ["top"],
+  2: ["left", "right"],
+  3: ["left", "top", "right"],
+  4: ["left", "top-left", "top-right", "right"],
+  5: ["left", "top-left", "top", "top-right", "right"]
+};
+
+function slotForOpponent(index, count) {
+  const slots = SEAT_SLOTS[count] ?? ["top"];
+  return slots[index % slots.length];
+}
 
 function Scoreboard({ roomState, clientPlayerId, action }) {
   const scores = roomState.currentRound?.roundSummary?.scores ?? roomState.players;
@@ -92,79 +103,62 @@ export function GameBoard({
     leadSuit && hasLeadSuit ? hand.filter((card) => card.suit === leadSuit).map((card) => card.id) : hand.map((card) => card.id)
   );
 
-  const lobbyHint = isAdmin
-    ? "You're the host — open Host controls to start the game"
-    : "Waiting for the host to start the round";
-  const tableHint = isLobby
-    ? lobbyHint
-    : isPreBidding
-      ? isAdmin
-        ? "Cards dealt — start bidding when ready"
-        : "Waiting for the host to start bidding"
-      : null;
-
   const canOpenHostPanel = isAdmin && (isLobby || isPreBidding || isSummary);
+  const timerEndsAt = roomState.timer?.endsAt ?? null;
 
   return (
     <div className="game-layout">
-      <div className="game-strip">
-        <div className="game-strip-left">
-          <span className="chip">
-            Room <span className="room-code">{roomState.roomId}</span>
+      <header className="game-header">
+        <div className="game-header-meta">
+          <span className="gh-item gh-room">
+            Room <strong className="room-code">{roomState.roomId}</strong>
           </span>
-          <span className="chip">
+          <span className="gh-dot" aria-hidden="true">·</span>
+          <span className="gh-item">
             Round <strong>{roomState.gameConfig.roundNumber}</strong>
           </span>
-          <span className="chip">
-            {roomState.gameConfig.phase === "ASCENDING" ? "Ascending" : "Descending"} ·{" "}
-            <strong>{roomState.gameConfig.cardsInRound}</strong> card{roomState.gameConfig.cardsInRound === 1 ? "" : "s"}
+          <span className="gh-dot" aria-hidden="true">·</span>
+          <span className="gh-item">
+            {roomState.gameConfig.phase === "ASCENDING" ? "Ascending" : "Descending"}{" "}
+            <strong>{roomState.gameConfig.cardsInRound}</strong> {roomState.gameConfig.cardsInRound === 1 ? "card" : "cards"}
           </span>
+          <span className="gh-dot" aria-hidden="true">·</span>
           <TrumpIndicator roomState={roomState} />
         </div>
-        <div className="game-strip-right">
-          <TurnTimerBar endsAt={roomState.timer?.endsAt} />
-          {isAdmin && isPreBidding && (
-            <button type="button" className="btn-primary" onClick={onStartBidding}>
-              Start bidding
-            </button>
-          )}
+        <div className="game-header-actions">
           {canOpenHostPanel && (
-            <button type="button" className="btn-ghost" onClick={() => setAdminOpen(true)}>
+            <button type="button" className="btn-ghost btn-sm" onClick={() => setAdminOpen(true)}>
               Host controls
             </button>
           )}
         </div>
+      </header>
+
+      <div className="table-wrap">
+        {opponents.length > 0 && (
+          <div className="opponents">
+            {opponents.map((player, index) => (
+              <PlayerSeat
+                key={player.playerId}
+                player={player}
+                slot={slotForOpponent(index, opponents.length)}
+                isTurn={players[roomState.gameConfig.currentTurnIndex]?.playerId === player.playerId}
+                isDimmed={!player.isOnline}
+                isDealer={player.playerId === dealerPlayerId}
+                timerEndsAt={
+                  players[roomState.gameConfig.currentTurnIndex]?.playerId === player.playerId ? timerEndsAt : null
+                }
+              />
+            ))}
+          </div>
+        )}
+
+        <TrickTable
+          roomState={roomState}
+          dropZoneRef={dropZoneRef}
+          dropActive={isDragging}
+        />
       </div>
-
-      <TurnOrder
-        players={players}
-        currentTurnIndex={roomState.gameConfig.currentTurnIndex}
-        dealerIndex={roomState.gameConfig.dealerIndex}
-      />
-
-      {opponents.length > 0 && (
-        <div className="opponents">
-          {opponents.map((player) => (
-            <PlayerSeat
-              key={player.playerId}
-              player={player}
-              isTurn={players[roomState.gameConfig.currentTurnIndex]?.playerId === player.playerId}
-              isDimmed={!player.isOnline}
-              showScore={!isLobby}
-              position={player.seatIndex + 1}
-              isDealer={player.playerId === dealerPlayerId}
-            />
-          ))}
-        </div>
-      )}
-
-      <TrickTable
-        roomState={roomState}
-        clientPlayerId={clientPlayerId}
-        hint={tableHint}
-        dropZoneRef={dropZoneRef}
-        dropActive={isDragging}
-      />
 
       {clientPlayer && (
         <div className="self-area">
@@ -173,9 +167,8 @@ export function GameBoard({
               player={clientPlayer}
               isClient
               isTurn={isMyTurn}
-              showScore={!isLobby}
-              position={clientPlayer.seatIndex + 1}
               isDealer={clientPlayer.playerId === dealerPlayerId}
+              timerEndsAt={isMyTurn ? timerEndsAt : null}
             />
           </div>
           <BiddingOverlay roomState={roomState} clientPlayerId={clientPlayerId} onSubmitBid={onSubmitBid} />

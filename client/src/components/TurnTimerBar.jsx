@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
 
+const RADIUS = 18;
+const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+
 export function TurnTimerBar({ endsAt }) {
   const [remainingMs, setRemainingMs] = useState(() =>
     endsAt ? Math.max(0, endsAt - Date.now()) : 0
@@ -27,14 +30,24 @@ export function TurnTimerBar({ endsAt }) {
   const secondsRemaining = Math.ceil(remainingMs / 1000);
 
   return (
-    <div className="timer-wrap">
-      <div className="timer-meta">
-        <span>Turn timer</span>
-        <strong>{secondsRemaining}s</strong>
-      </div>
-      <div className="timer-track" aria-hidden="true">
-        <div className="timer-fill" style={{ width: `${percentage}%` }} />
-      </div>
-    </div>
+    <span
+      className="seat-timer"
+      role="timer"
+      aria-label={`${secondsRemaining} seconds remaining`}
+    >
+      <svg className="seat-timer-ring" viewBox="0 0 44 44" aria-hidden="true">
+        <circle className="seat-timer-track" cx="22" cy="22" r={RADIUS} />
+        <circle
+          className="seat-timer-fill"
+          cx="22"
+          cy="22"
+          r={RADIUS}
+          strokeDasharray={CIRCUMFERENCE}
+          strokeDashoffset={CIRCUMFERENCE * (1 - percentage / 100)}
+        />
+      </svg>
+      <span className="seat-timer-text">{secondsRemaining}s</span>
+    </span>
   );
 }
+
