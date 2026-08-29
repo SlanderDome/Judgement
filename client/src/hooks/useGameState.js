@@ -1,37 +1,110 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSocket } from "../context/SocketContext.jsx";
 
+const SESSION_STORAGE_KEY = "judgement-session";
 const PLAYER_ID_STORAGE_KEY = "judgement-player-id";
+
+function getSavedSession() {
+  try {
+    const raw = window.localStorage.getItem(SESSION_STORAGE_KEY);
+    if (raw) {
+      const data = JSON.parse(raw);
+      if (data && data.roomId && data.playerId) {
+        return data;
+      }
+    }
+  } catch (_error) {
+    // Ignore JSON parse errors
+  }
+  const fallbackPlayerId = window.localStorage.getItem(PLAYER_ID_STORAGE_KEY);
+  return fallbackPlayerId ? { playerId: fallbackPlayerId } : null;
+}
+
+function saveSession(session) {
+  if (!session || !session.playerId) {
+    return;
+  }
+
+  if (session.roomId) {
+    window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+  }
+
+  window.localStorage.setItem(PLAYER_ID_STORAGE_KEY, session.playerId);
+}
+
+function clearSession() {
+  window.localStorage.removeItem(SESSION_STORAGE_KEY);
+}
 
 export function useGameState() {
   const { socket, isConnected } = useSocket();
   const [roomState, setRoomState] = useState(null);
   const [clientPlayerId, setClientPlayerId] = useState(
-    () => window.localStorage.getItem(PLAYER_ID_STORAGE_KEY) || null
+    () => getSavedSession()?.playerId || null
   );
   const [errorMessage, setErrorMessage] = useState("");
+
+  const syncWithServer = useCallback(
+    (session = getSavedSession()) => {
+      if (!socket || !socket.connected || !session || !session.roomId) {
+        return;
+      }
+
+      socket.emit("room:join", {
+        roomId: session.roomId.trim().toUpperCase(),
+        nickname: session.nickname || "",
+        playerId: session.playerId
+      });
+    },
+    [socket]
+  );
 
   useEffect(() => {
     function handleRoomState(payload) {
       setRoomState(payload.roomState);
       setClientPlayerId(payload.clientPlayerId);
-      window.localStorage.setItem(PLAYER_ID_STORAGE_KEY, payload.clientPlayerId);
+      setErrorMessage("");
+
+      const me = payload.roomState?.players?.find(
+        (player) => player.playerId === payload.clientPlayerId
+      );
+
+      saveSession({
+        roomId: payload.roomState.roomId,
+        playerId: payload.clientPlayerId,
+        nickname: me?.nickname || ""
+      });
     }
 
     function handleRoomCreated(payload) {
       setClientPlayerId(payload.playerId);
-      window.localStorage.setItem(PLAYER_ID_STORAGE_KEY, payload.playerId);
       setErrorMessage("");
+      saveSession({
+        roomId: payload.roomId,
+        playerId: payload.playerId,
+        nickname: payload.nickname || ""
+      });
     }
 
     function handleRoomJoined(payload) {
       setClientPlayerId(payload.playerId);
-      window.localStorage.setItem(PLAYER_ID_STORAGE_KEY, payload.playerId);
       setErrorMessage("");
+      saveSession({
+        roomId: payload.roomId,
+        playerId: payload.playerId,
+        nickname: payload.nickname || ""
+      });
     }
 
     function handleError(payload) {
       setErrorMessage(payload.message);
+      if (
+        payload.code === "ROOM_NOT_FOUND" ||
+        payload.code === "SESSION_INVALID"
+      ) {
+        clearSession();
+        setRoomState(null);
+      }
     }
 
     socket.on("room:state_update", handleRoomState);
@@ -47,6 +120,49 @@ export function useGameState() {
     };
   }, [socket]);
 
+  useEffect(() => {
+    if (isConnected) {
+      syncWithServer();
+    }
+
+    function handleConnect() {
+      syncWithServer();
+    }
+
+    socket.on("connect", handleConnect);
+    return () => {
+      socket.off("connect", handleConnect);
+    };
+  }, [socket, isConnected, syncWithServer]);
+
+  useEffect(() => {
+    function handleVisibilityOrFocus() {
+      if (document.visibilityState === "visible") {
+        const session = getSavedSession();
+        if (!session || !session.roomId) {
+          return;
+        }
+
+        if (socket.connected) {
+          socket.emit("room:sync", {
+            roomId: session.roomId,
+            playerId: session.playerId
+          });
+        } else {
+          socket.connect();
+        }
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityOrFocus);
+    window.addEventListener("focus", handleVisibilityOrFocus);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityOrFocus);
+      window.removeEventListener("focus", handleVisibilityOrFocus);
+    };
+  }, [socket]);
+
   function createRoom(nickname) {
     socket.emit("room:create", {
       nickname,
@@ -55,11 +171,18 @@ export function useGameState() {
   }
 
   function joinRoom(roomId, nickname) {
+    const formattedRoomId = roomId.trim().toUpperCase();
     socket.emit("room:join", {
-      roomId: roomId.trim().toUpperCase(),
+      roomId: formattedRoomId,
       nickname,
       playerId: clientPlayerId
     });
+  }
+
+  function leaveRoom() {
+    clearSession();
+    setRoomState(null);
+    setErrorMessage("");
   }
 
   function startGame(options = {}) {
@@ -152,6 +275,7 @@ export function useGameState() {
     actions: {
       createRoom,
       joinRoom,
+      leaveRoom,
       startGame,
       submitBid,
       playCard,

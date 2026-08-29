@@ -71,7 +71,11 @@ export function registerSocketHandlers(io) {
       socket.join(room.roomId);
       emitRoomState(io, room);
       scheduleRoomTimeout(io, room.roomId);
-      socket.emit("room:created", { roomId: room.roomId, playerId: player.playerId });
+      socket.emit("room:created", {
+        roomId: room.roomId,
+        playerId: player.playerId,
+        nickname: player.nickname
+      });
     });
 
     socket.on("room:join", ({ roomId, nickname, playerId } = {}) => {
@@ -89,11 +93,35 @@ export function registerSocketHandlers(io) {
         socket.emit("room:joined", {
           roomId: room.roomId,
           playerId: player.playerId,
+          nickname: player.nickname,
           reconnected
         });
       } catch (error) {
         emitError(socket, error.message, "ROOM_NOT_FOUND");
       }
+    });
+
+    socket.on("room:sync", ({ roomId, playerId } = {}) => {
+      if (!roomId || !playerId) {
+        return;
+      }
+      const room = roomManager.getRoom(roomId);
+      if (!room) {
+        emitError(socket, "Room not found.", "ROOM_NOT_FOUND");
+        return;
+      }
+      const existingPlayer = room.players.find((p) => p.playerId === playerId);
+      if (!existingPlayer) {
+        emitError(socket, "Player session not found in room.", "SESSION_INVALID");
+        return;
+      }
+
+      existingPlayer.socketId = socket.id;
+      existingPlayer.isOnline = true;
+      socket.join(room.roomId);
+
+      emitRoomState(io, room);
+      scheduleRoomTimeout(io, room.roomId);
     });
 
     socket.on("game:start", ({ roomId, playerId, cardsInRound, trumpSuit } = {}) => {
