@@ -12,6 +12,7 @@ const SUIT_PIPS = {
 export function PlayingHand({ cards, isMyTurn, legalCardIds, onPlayCard, dropZoneRef, onDragStateChange }) {
   const [selectedCardId, setSelectedCardId] = useState(null);
   const [hoveredCardId, setHoveredCardId] = useState(null);
+  const [pointerTiltById, setPointerTiltById] = useState({});
   const [fan, setFan] = useState({ overlap: 0 });
   const handRef = useRef(null);
 
@@ -27,6 +28,32 @@ export function PlayingHand({ cards, isMyTurn, legalCardIds, onPlayCard, dropZon
     }
 
     setSelectedCardId((currentId) => (currentId === cardId ? null : cardId));
+  }
+
+  function handleCardMove(cardId, event) {
+    if (!isMyTurn || !legalCardIds.has(cardId)) {
+      return;
+    }
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const offset = rect.width > 0 ? (x / rect.width - 0.5) * 12 : 0;
+    const tilt = Math.max(-6, Math.min(6, offset));
+
+    setPointerTiltById((current) => (current[cardId] === tilt ? current : { ...current, [cardId]: tilt }));
+  }
+
+  function handleCardLeave(cardId) {
+    setHoveredCardId(null);
+    setPointerTiltById((current) => {
+      if (!(cardId in current)) {
+        return current;
+      }
+
+      const next = { ...current };
+      delete next[cardId];
+      return next;
+    });
   }
 
   function handlePlaySelected() {
@@ -127,9 +154,11 @@ export function PlayingHand({ cards, isMyTurn, legalCardIds, onPlayCard, dropZon
                   y={y}
                   onClick={() => handleCardClick(card.id)}
                   onMouseEnter={() => setHoveredCardId(card.id)}
-                  onMouseLeave={() => setHoveredCardId(null)}
+                  onMouseMove={(event) => handleCardMove(card.id, event)}
+                  onMouseLeave={() => handleCardLeave(card.id)}
                   onDragStart={() => onDragStateChange?.(true)}
                   onDragEnd={(info) => handleDragEnd(card.id, info)}
+                  pointerTilt={pointerTiltById[card.id] ?? 0}
                 />
               </motion.div>
             );

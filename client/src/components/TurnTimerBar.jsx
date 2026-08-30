@@ -28,10 +28,11 @@ export function TurnTimerBar({ endsAt }) {
 
   const percentage = Math.max(0, Math.min(100, (remainingMs / 20000) * 100));
   const secondsRemaining = Math.ceil(remainingMs / 1000);
+  const urgencyClass = secondsRemaining <= 1 ? "is-critical" : secondsRemaining <= 5 ? "is-urgent" : secondsRemaining <= 10 ? "is-warm" : "is-calm";
 
   return (
     <span
-      className="seat-timer"
+      className={`seat-timer ${urgencyClass}`}
       role="timer"
       aria-label={`${secondsRemaining} seconds remaining`}
     >
@@ -46,8 +47,7 @@ export function TurnTimerBar({ endsAt }) {
           strokeDashoffset={CIRCUMFERENCE * (1 - percentage / 100)}
         />
       </svg>
-      <span className="seat-timer-text">{secondsRemaining}s</span>
+      <span className="seat-timer-text">{secondsRemaining <= 1 ? "1s" : `${secondsRemaining}s`}</span>
     </span>
   );
 }
-

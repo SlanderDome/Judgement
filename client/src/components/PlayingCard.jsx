@@ -20,6 +20,7 @@ export function PlayingCard({
   isDraggable = false,
   rotation = 0,
   y = 0,
+  pointerTilt = 0,
   onClick,
   onMouseEnter,
   onMouseLeave,
@@ -49,10 +50,23 @@ export function PlayingCard({
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
       layoutId={card.id}
-      initial={{ opacity: 0, y: isTableCard ? -24 : -180, rotate: isTableCard ? rotation - 6 : 0, scale: isTableCard ? 0.88 : 0.65 }}
-      animate={{ opacity: 1, y: isSelected ? y - 32 : y, rotate: isSelected ? 0 : rotation, scale: isSelected ? 1.12 : 1 }}
-      whileHover={!disabled ? { y: y - 36, rotate: 0, scale: 1.15 } : undefined}
-      whileTap={!disabled ? { scale: 0.97 } : undefined}
+      initial={{
+        opacity: 0,
+        y: isTableCard ? 28 : 80,
+        rotate: isTableCard ? rotation - 8 : rotation,
+        rotateX: isTableCard ? 10 : 0,
+        scale: isTableCard ? 0.92 : 0.82
+      }}
+      animate={{
+        opacity: 1,
+        y: isSelected ? y - 34 : y,
+        rotate: isSelected ? 0 : rotation + pointerTilt,
+        rotateX: isSelected ? -8 : 0,
+        scale: isSelected ? 1.14 : 1,
+        zIndex: isSelected ? 140 : undefined
+      }}
+      whileHover={!disabled ? { y: y - 38, rotate: rotation + pointerTilt * 0.5, scale: 1.13 } : undefined}
+      whileTap={!disabled ? { scale: 0.98, y: y - 18 } : undefined}
       drag={isDraggable && !disabled}
       dragSnapToOrigin={isDraggable}
       dragElastic={0.16}
@@ -61,6 +75,7 @@ export function PlayingCard({
         scale: 1.14,
         zIndex: 150,
         rotate: 0,
+        rotateX: -10,
         y: 0,
         boxShadow: "0 24px 48px rgba(0, 0, 0, 0.5), 0 0 0 3px var(--gold)"
       }}
@@ -84,4 +99,3 @@ export function PlayingCard({
     </motion.button>
   );
 }
-

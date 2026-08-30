@@ -27,8 +27,8 @@ export default function App() {
             <h1>JUDGEMENT</h1>
             <p>Bid your tricks, land them exactly.</p>
           </div>
-          <CreateRoom onCreate={actions.createRoom} />
-          <JoinRoom onJoin={actions.joinRoom} />
+          <CreateRoom onCreate={actions.createRoom} isConnected={isConnected} />
+          <JoinRoom onJoin={actions.joinRoom} isConnected={isConnected} />
         </section>
       ) : (
         <GameBoard

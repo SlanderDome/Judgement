@@ -91,14 +91,17 @@ export function GameBoard({
   const isGameOver = status === "GAME_OVER";
   const isMyTurn = players[roomState.gameConfig.currentTurnIndex]?.playerId === clientPlayerId;
   const currentTurnPlayer = players[roomState.gameConfig.currentTurnIndex] ?? null;
+  const currentTrickCards = roomState.currentRound?.currentTrick?.cardsPlayed ?? [];
+  const recentlyActedPlayerId =
+    currentTrickCards[currentTrickCards.length - 1]?.playerId ?? roomState.currentRound?.lastTrick?.winnerPlayerId ?? null;
   const phaseLabel =
     {
-      LOBBY: "Lobby",
-      PRE_BIDDING: "Deal",
+      LOBBY: "Waiting",
+      PRE_BIDDING: "Waiting",
       BIDDING: "Bidding",
-      TRICK_PLAYING: "Trick play",
+      TRICK_PLAYING: isMyTurn ? "Your turn" : "Waiting",
       ROUND_SUMMARY: "Round complete",
-      GAME_OVER: "Game over"
+      GAME_OVER: "Round complete"
     }[status] ?? status;
   const turnLabel =
     status === "LOBBY"
@@ -145,7 +148,7 @@ export function GameBoard({
           <TrumpIndicator roomState={roomState} />
         </div>
         <div className="game-header-actions">
-          <span className="gh-item gh-state" aria-label={`Phase ${phaseLabel}, ${turnLabel}`}>
+          <span className={`gh-item gh-state gh-state--${phaseLabel.toLowerCase().replace(/\s+/g, "-")}`} aria-label={`Phase ${phaseLabel}, ${turnLabel}`}>
             <strong>{phaseLabel}</strong>
             <span>{turnLabel}</span>
           </span>
@@ -171,6 +174,7 @@ export function GameBoard({
                 isTurn={players[roomState.gameConfig.currentTurnIndex]?.playerId === player.playerId}
                 isDimmed={!player.isOnline}
                 isDealer={player.playerId === dealerPlayerId}
+                isRecentlyActed={player.playerId === recentlyActedPlayerId && !isMyTurn}
                 timerEndsAt={
                   players[roomState.gameConfig.currentTurnIndex]?.playerId === player.playerId ? timerEndsAt : null
                 }
@@ -194,6 +198,7 @@ export function GameBoard({
               isClient
               isTurn={isMyTurn}
               isDealer={clientPlayer.playerId === dealerPlayerId}
+              isRecentlyActed={clientPlayer.playerId === recentlyActedPlayerId && !isMyTurn}
               timerEndsAt={isMyTurn ? timerEndsAt : null}
             />
           </div>

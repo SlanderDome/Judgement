@@ -7,20 +7,35 @@ export function PlayerSeat({
   isTurn = false,
   isDimmed = false,
   isDealer = false,
+  isRecentlyActed = false,
   timerEndsAt = null,
   slot = null
 }) {
   const hue = (player.seatIndex * 137.508) % 360;
   const cardCount = player.handCount ?? player.hand?.length ?? 0;
   const hasBid = player.currentBid != null;
+  const isOffline = !player.isOnline;
+  const seatStatus = isOffline
+    ? "Offline"
+    : isTurn
+      ? isClient
+        ? "Your turn"
+        : "Acting"
+      : isRecentlyActed
+        ? "Just acted"
+        : isDealer
+          ? "Dealer"
+          : "Waiting";
 
   return (
     <motion.div
       className={[
         "seat",
         isClient ? "seat--self" : "",
-        isTurn ? "seat--turn" : "",
-        isDimmed ? "seat--dim" : "",
+        isTurn ? "seat--active" : "",
+        isRecentlyActed ? "seat--recent" : "",
+        isOffline ? "seat--offline" : isDimmed ? "seat--dim" : "",
+        isDealer ? "seat--dealer-state" : "",
         slot ? `seat-slot seat-slot--${slot}` : ""
       ].join(" ")}
       style={{ "--seat-hue": hue }}
@@ -44,6 +59,7 @@ export function PlayerSeat({
           {player.nickname}
           {isClient && <em className="seat-you">you</em>}
         </span>
+        <span className="seat-status">{seatStatus}</span>
         {hasBid ? (
           <span
             className="seat-bid-badge"
@@ -62,6 +78,5 @@ export function PlayerSeat({
     </motion.div>
   );
 }
-
 
 
