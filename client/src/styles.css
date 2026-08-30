@@ -314,7 +314,7 @@ input:focus {
 
 .btn-sm {
   padding: 0.3rem 0.65rem;
-  min-height: 32px;
+  min-height: 44px;
   font-size: 0.78rem;
   border-radius: var(--radius-sm);
 }
@@ -943,7 +943,7 @@ input:focus {
 
 .overlay-close {
   padding: 0.3rem 0.55rem;
-  min-height: 0;
+  min-height: 44px;
   font-size: 1.1rem;
   line-height: 1;
   border-radius: 8px;
@@ -1059,7 +1059,7 @@ input:focus {
 }
 
 .order-actions button {
-  min-height: 30px;
+  min-height: 44px;
   padding: 0.2rem 0.55rem;
   font-size: 0.85rem;
   line-height: 1;
@@ -1126,7 +1126,7 @@ input:focus {
 }
 
 .stepper button {
-  min-height: 36px;
+  min-height: 44px;
   padding: 0.3rem 0.7rem;
   font-size: 1rem;
 }
@@ -1146,7 +1146,7 @@ input:focus {
 }
 
 .suit-chip {
-  min-height: 38px;
+  min-height: 44px;
   padding: 0.4rem 0.7rem;
   font-size: 0.9rem;
   color: var(--ivory);

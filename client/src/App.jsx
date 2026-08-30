@@ -11,7 +11,7 @@ export default function App() {
     <main className="app-shell">
       <header className="topbar">
         <div className="brand-block">
-          <h1 className="brand">JUDGEMENT</h1>
+          <span className="brand">JUDGEMENT</span>
           <span className="brand-sub">Trick-taking</span>
         </div>
         <div className="topbar-actions">
