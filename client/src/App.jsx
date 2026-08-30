@@ -9,15 +9,17 @@ export default function App() {
 
   return (
     <main className={`app-shell ${roomState ? "app-shell--game" : "app-shell--lobby"}`}>
-      <header className="topbar">
-        <div className="brand-block">
-          <span className="brand">JUDGEMENT</span>
-          <span className="brand-sub">Trick-taking</span>
-        </div>
-        <div className="topbar-actions">
-          <ConnectionBadge isConnected={isConnected} />
-        </div>
-      </header>
+      {!roomState && (
+        <header className="topbar">
+          <div className="brand-block">
+            <span className="brand">JUDGEMENT</span>
+            <span className="brand-sub">Trick-taking</span>
+          </div>
+          <div className="topbar-actions">
+            <ConnectionBadge isConnected={isConnected} />
+          </div>
+        </header>
+      )}
 
       {errorMessage && <div className="error-banner">{errorMessage}</div>}
 
@@ -34,6 +36,7 @@ export default function App() {
         <GameBoard
           roomState={roomState}
           clientPlayerId={clientPlayerId}
+          isConnected={isConnected}
           onStartGame={actions.startGame}
           onSubmitBid={actions.submitBid}
           onPlayCard={actions.playCard}

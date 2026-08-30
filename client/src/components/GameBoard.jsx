@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { AdminRoundControl } from "./AdminRoundControl.jsx";
 import { BiddingOverlay } from "./BiddingOverlay.jsx";
+import { ConnectionBadge } from "./ConnectionBadge.jsx";
 import { PlayerSeat } from "./PlayerSeat.jsx";
 import { PlayingHand } from "./PlayingHand.jsx";
 import { TrumpIndicator } from "./TrumpIndicator.jsx";
@@ -67,6 +68,7 @@ function Scoreboard({ roomState, clientPlayerId, action }) {
 export function GameBoard({
   roomState,
   clientPlayerId,
+  isConnected,
   onStartGame,
   onSubmitBid,
   onPlayCard,
@@ -114,7 +116,11 @@ export function GameBoard({
 
   const opponents = players
     .filter((player) => player.playerId !== clientPlayerId)
-    .sort((a, b) => a.seatIndex - b.seatIndex);
+    .sort((a, b) => {
+      const aDistance = (a.seatIndex - (clientPlayer?.seatIndex ?? 0) + players.length) % players.length;
+      const bDistance = (b.seatIndex - (clientPlayer?.seatIndex ?? 0) + players.length) % players.length;
+      return aDistance - bDistance;
+    });
 
   const dealerPlayerId = players[roomState.gameConfig.dealerIndex]?.playerId;
 
@@ -148,6 +154,7 @@ export function GameBoard({
           <TrumpIndicator roomState={roomState} />
         </div>
         <div className="game-header-actions">
+          <ConnectionBadge isConnected={isConnected} />
           <span className={`gh-item gh-state gh-state--${phaseLabel.toLowerCase().replace(/\s+/g, "-")}`} aria-label={`Phase ${phaseLabel}, ${turnLabel}`}>
             <strong>{phaseLabel}</strong>
             <span>{turnLabel}</span>

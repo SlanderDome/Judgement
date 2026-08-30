@@ -16,10 +16,6 @@ export function JoinRoom({ onJoin, isConnected }) {
     <form className="panel panel--secondary" onSubmit={handleSubmit}>
       <p className="eyebrow">Already invited?</p>
       <h2>Join with a room code</h2>
-      <div className={`panel-status ${isConnected ? "is-ready" : "is-pending"}`} aria-live="polite">
-        <span className="panel-status-dot" aria-hidden="true" />
-        <span>{isConnected ? "Server ready" : "Connecting to server"}</span>
-      </div>
       <label className="field">
         <span>Room code</span>
         <input

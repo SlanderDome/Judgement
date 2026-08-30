@@ -1848,3 +1848,154 @@ input:focus {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* ---------- Desktop tabletop composition ---------- */
+
+@media (min-width: 861px) {
+  .app-shell--game {
+    padding-top: 8px;
+    padding-bottom: 10px;
+    gap: 6px;
+  }
+
+  .app-shell--game > .topbar {
+    padding: 6px 10px;
+    border-color: rgba(246, 239, 225, 0.08);
+    border-radius: 12px;
+    background: rgba(5, 18, 14, 0.42);
+    box-shadow: none;
+  }
+
+  .app-shell--game > .topbar .brand {
+    font-size: 1.18rem;
+  }
+
+  .app-shell--game > .topbar .brand-sub {
+    min-height: 20px;
+    font-size: 0.62rem;
+  }
+
+  .game-layout {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    gap: 0;
+    padding-top: 0;
+    perspective: 1400px;
+  }
+
+  .game-header {
+    position: absolute;
+    top: 8px;
+    right: 0;
+    z-index: 12;
+    display: flex;
+    width: auto;
+    max-width: min(720px, 58vw);
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    pointer-events: none;
+  }
+
+  .game-header-meta,
+  .game-header-actions {
+    pointer-events: auto;
+  }
+
+  .game-header-meta {
+    justify-content: flex-end;
+  }
+
+  .game-header-actions {
+    justify-content: flex-end;
+  }
+
+  .gh-item {
+    padding: 0.3rem 0.56rem;
+    font-size: 0.72rem;
+    background: rgba(5, 18, 14, 0.74);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  }
+
+  .gh-dot {
+    display: none;
+  }
+
+  .game-header-actions .btn-sm {
+    min-height: 36px;
+    padding: 0.25rem 0.58rem;
+    background: rgba(5, 18, 14, 0.7);
+  }
+
+  .table-wrap {
+    position: relative;
+    flex: 1 1 auto;
+    width: min(1240px, 100%);
+    min-height: 0;
+    margin: 0 auto;
+    padding: clamp(54px, 7vh, 82px) clamp(100px, 12vw, 190px) clamp(92px, 12vh, 132px);
+  }
+
+  .table-stage {
+    width: 100%;
+    min-height: 0;
+    height: 100%;
+  }
+
+  .table-felt {
+    min-height: 0;
+    height: 100%;
+    border-width: clamp(12px, 1.1vw, 18px);
+    border-radius: clamp(28px, 3vw, 44px);
+  }
+
+  .table-inner {
+    min-height: 0;
+    padding: clamp(20px, 2.4vw, 38px);
+  }
+
+  .played-card-grid {
+    min-height: clamp(150px, 24vh, 250px);
+  }
+
+  .opponents {
+    inset: 0;
+  }
+
+  .self-area {
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    z-index: 8;
+    width: min(900px, 74vw);
+    transform: translateX(-50%);
+    gap: 0;
+    pointer-events: none;
+  }
+
+  .self-area > * {
+    pointer-events: auto;
+  }
+
+  .self-row {
+    justify-content: center;
+  }
+
+  .self-area .hand {
+    width: 100%;
+  }
+
+  .fan-hand {
+    min-height: clamp(132px, 17vh, 180px);
+    padding: 24px 18px 4px;
+  }
+
+  .seat {
+    background: rgba(5, 18, 14, 0.52);
+  }
+}

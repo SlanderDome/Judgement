@@ -15,10 +15,6 @@ export function CreateRoom({ onCreate, isConnected }) {
     <form className="panel panel--primary" onSubmit={handleSubmit}>
       <p className="eyebrow">Start a table</p>
       <h2>Create a private room</h2>
-      <div className={`panel-status ${isConnected ? "is-ready" : "is-pending"}`} aria-live="polite">
-        <span className="panel-status-dot" aria-hidden="true" />
-        <span>{isConnected ? "Server ready" : "Connecting to server"}</span>
-      </div>
       <label className="field">
         <span>Nickname</span>
         <input
