@@ -1,4 +1,3 @@
-import { ConnectionBadge } from "./components/ConnectionBadge.jsx";
 import { CreateRoom } from "./components/CreateRoom.jsx";
 import { GameBoard } from "./components/GameBoard.jsx";
 import { JoinRoom } from "./components/JoinRoom.jsx";
@@ -9,18 +8,6 @@ export default function App() {
 
   return (
     <main className={`app-shell ${roomState ? "app-shell--game" : "app-shell--lobby"}`}>
-      {!roomState && (
-        <header className="topbar">
-          <div className="brand-block">
-            <span className="brand">JUDGEMENT</span>
-            <span className="brand-sub">Trick-taking</span>
-          </div>
-          <div className="topbar-actions">
-            <ConnectionBadge isConnected={isConnected} />
-          </div>
-        </header>
-      )}
-
       {errorMessage && <div className="error-banner">{errorMessage}</div>}
 
       {!roomState ? (

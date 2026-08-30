@@ -199,58 +199,6 @@ input:focus {
     radial-gradient(120% 90% at 50% 46%, rgba(15, 97, 74, 0.08) 0%, transparent 55%);
 }
 
-.topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 12px clamp(14px, 1.6vw, 18px);
-  border: 1px solid var(--line);
-  border-radius: 20px;
-  background: linear-gradient(180deg, rgba(9, 31, 24, 0.88), rgba(5, 18, 14, 0.76));
-  box-shadow: var(--shadow-soft), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-}
-
-.brand-block {
-  display: flex;
-  align-items: baseline;
-  gap: 0.6rem;
-}
-
-.brand {
-  margin: 0;
-  font-family: var(--font-wordmark);
-  font-size: clamp(1.4rem, 2vw, 1.7rem);
-  font-weight: 800;
-  line-height: 1;
-  letter-spacing: 0.08em;
-  color: var(--ivory);
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.08), 0 0 18px rgba(201, 162, 74, 0.08);
-}
-
-.brand-sub {
-  display: inline-flex;
-  align-items: center;
-  min-height: 24px;
-  padding: 0.18rem 0.5rem;
-  border: 1px solid rgba(246, 239, 225, 0.12);
-  border-radius: 999px;
-  background: rgba(246, 239, 225, 0.04);
-  color: var(--ivory-mute);
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
-
-.topbar-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
 .eyebrow {
   margin: 0 0 4px;
   color: var(--gold-light);
@@ -1774,10 +1722,6 @@ input:focus {
     padding: 0.95rem 0.9rem;
   }
 
-  .topbar {
-    flex-wrap: wrap;
-  }
-
   .game-header {
     font-size: 0.8rem;
     gap: 0.6rem;
@@ -1816,23 +1760,6 @@ input:focus {
     padding-top: 8px;
     padding-bottom: 10px;
     gap: 6px;
-  }
-
-  .app-shell--game > .topbar {
-    padding: 6px 10px;
-    border-color: rgba(246, 239, 225, 0.08);
-    border-radius: 12px;
-    background: rgba(5, 18, 14, 0.42);
-    box-shadow: none;
-  }
-
-  .app-shell--game > .topbar .brand {
-    font-size: 1.18rem;
-  }
-
-  .app-shell--game > .topbar .brand-sub {
-    min-height: 20px;
-    font-size: 0.62rem;
   }
 
   .game-layout {
