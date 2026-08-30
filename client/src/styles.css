@@ -1756,98 +1756,141 @@ input:focus {
 /* ---------- Desktop tabletop composition ---------- */
 
 @media (min-width: 861px) {
-  .app-shell--game {
-    padding-top: 8px;
-    padding-bottom: 10px;
-    gap: 6px;
-  }
-
   .game-layout {
-    position: relative;
-    flex: 1 1 auto;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    gap: clamp(10px, 1.2vh, 18px);
     min-height: 0;
-    gap: 0;
     padding-top: 0;
     perspective: 1400px;
   }
 
   .game-header {
-    position: absolute;
-    top: 8px;
-    right: 0;
-    z-index: 12;
+    width: min(1280px, 100%);
+    margin: 0 auto;
+    padding: 0 2px;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.5rem 1rem;
+    font-size: 0.74rem;
+    color: var(--ivory-soft);
+  }
+
+  .game-header-meta,
+  .game-header-actions {
     display: flex;
-    width: auto;
-    max-width: min(720px, 58vw);
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.4rem 0.65rem;
+  }
+
+  .game-header-actions {
+    justify-content: flex-end;
+  }
+
+  .gh-item,
+  .gh-state,
+  .trump-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
     padding: 0;
     border: 0;
     border-radius: 0;
     background: transparent;
     box-shadow: none;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    pointer-events: none;
   }
 
-  .game-header-meta,
-  .game-header-actions {
-    pointer-events: auto;
-  }
-
-  .game-header-meta {
-    justify-content: flex-end;
-  }
-
-  .game-header-actions {
-    justify-content: flex-end;
-  }
-
-  .gh-item {
-    padding: 0.3rem 0.56rem;
-    font-size: 0.72rem;
-    background: rgba(5, 18, 14, 0.74);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  .gh-item strong,
+  .gh-state strong {
+    color: var(--ivory);
   }
 
   .gh-dot {
     display: none;
   }
 
+  .room-code {
+    font-size: 0.86rem;
+  }
+
+  .trump-label {
+    font-size: 0.62rem;
+  }
+
+  .trump-pip {
+    font-size: 0.92rem;
+  }
+
+  .connection-dot-badge {
+    padding: 0.26rem 0.5rem;
+    border-color: rgba(246, 239, 225, 0.08);
+    background: rgba(246, 239, 225, 0.03);
+    font-size: 0.66rem;
+    box-shadow: none;
+  }
+
+  .connection-dot {
+    width: 6px;
+    height: 6px;
+  }
+
   .game-header-actions .btn-sm {
-    min-height: 36px;
-    padding: 0.25rem 0.58rem;
-    background: rgba(5, 18, 14, 0.7);
+    min-height: 32px;
+    padding: 0.2rem 0.5rem;
+    font-size: 0.66rem;
+    border-color: rgba(246, 239, 225, 0.1);
+    background: transparent;
+  }
+
+  .game-header-actions .btn-sm:hover:not(:disabled) {
+    background: rgba(246, 239, 225, 0.05);
+  }
+
+  .game-header-actions .btn-sm:focus-visible {
+    outline-offset: 1px;
+  }
+
+  .game-header .gh-state {
+    color: var(--ivory-soft);
   }
 
   .table-wrap {
-    position: relative;
-    flex: 1 1 auto;
-    width: min(1240px, 100%);
+    width: min(1280px, 100%);
     min-height: 0;
     margin: 0 auto;
-    padding: clamp(54px, 7vh, 82px) clamp(100px, 12vw, 190px) clamp(92px, 12vh, 132px);
+    padding: clamp(8px, 1.2vh, 16px) clamp(20px, 3vw, 56px);
+    display: grid;
+    place-items: center;
   }
 
   .table-stage {
-    width: 100%;
-    min-height: 0;
-    height: 100%;
+    width: min(1120px, 100%);
+    max-height: min(66vh, 720px);
+    aspect-ratio: 1.46 / 1;
   }
 
   .table-felt {
-    min-height: 0;
+    width: 100%;
     height: 100%;
-    border-width: clamp(12px, 1.1vw, 18px);
-    border-radius: clamp(28px, 3vw, 44px);
+    min-height: 0;
+    border-width: clamp(12px, 1vw, 16px);
+    border-radius: clamp(30px, 2.6vw, 42px);
   }
 
   .table-inner {
     min-height: 0;
-    padding: clamp(20px, 2.4vw, 38px);
+    padding: clamp(18px, 2vw, 32px);
   }
 
   .played-card-grid {
-    min-height: clamp(150px, 24vh, 250px);
+    min-height: clamp(140px, 20vh, 220px);
   }
 
   .opponents {
@@ -1855,18 +1898,9 @@ input:focus {
   }
 
   .self-area {
-    position: absolute;
-    left: 50%;
-    bottom: 0;
-    z-index: 8;
-    width: min(900px, 74vw);
-    transform: translateX(-50%);
-    gap: 0;
-    pointer-events: none;
-  }
-
-  .self-area > * {
-    pointer-events: auto;
+    width: min(1180px, 100%);
+    margin: 0 auto;
+    gap: 8px;
   }
 
   .self-row {
@@ -1878,11 +1912,11 @@ input:focus {
   }
 
   .fan-hand {
-    min-height: clamp(132px, 17vh, 180px);
-    padding: 24px 18px 4px;
+    min-height: clamp(128px, 15vh, 168px);
+    padding: 18px 16px 4px;
   }
 
   .seat {
-    background: rgba(5, 18, 14, 0.52);
+    background: rgba(5, 18, 14, 0.5);
   }
 }

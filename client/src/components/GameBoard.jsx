@@ -13,7 +13,8 @@ const SEAT_SLOTS = {
   2: ["left", "right"],
   3: ["left", "top", "right"],
   4: ["left", "top-left", "top-right", "right"],
-  5: ["left", "top-left", "top", "top-right", "right"]
+  5: ["left", "top-left", "top", "top-right", "right"],
+  6: ["left", "top-left", "top", "top-right", "right"]
 };
 
 function slotForOpponent(index, count) {
