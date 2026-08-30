@@ -73,7 +73,8 @@ export function GameBoard({
   onStartBidding,
   onReorderPlayers,
   onNextRound,
-  onRematch
+  onRematch,
+  onLeaveRoom
 }) {
   const [adminOpen, setAdminOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -126,6 +127,9 @@ export function GameBoard({
           <TrumpIndicator roomState={roomState} />
         </div>
         <div className="game-header-actions">
+          <button type="button" className="btn-ghost btn-sm" onClick={onLeaveRoom}>
+            Main menu
+          </button>
           {canOpenHostPanel && (
             <button type="button" className="btn-ghost btn-sm" onClick={() => setAdminOpen(true)}>
               Host controls

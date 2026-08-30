@@ -180,6 +180,10 @@ export function useGameState() {
   }
 
   function leaveRoom() {
+    if (socket.connected) {
+      socket.emit("room:leave");
+    }
+
     clearSession();
     setRoomState(null);
     setErrorMessage("");

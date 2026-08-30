@@ -124,6 +124,17 @@ export function registerSocketHandlers(io) {
       scheduleRoomTimeout(io, room.roomId);
     });
 
+    socket.on("room:leave", () => {
+      const disconnected = roomManager.disconnectSocket(socket.id);
+      if (!disconnected) {
+        return;
+      }
+
+      socket.leave(disconnected.room.roomId);
+      emitRoomState(io, disconnected.room);
+      scheduleRoomTimeout(io, disconnected.room.roomId);
+    });
+
     socket.on("game:start", ({ roomId, playerId, cardsInRound, trumpSuit } = {}) => {
       try {
         const room = roomManager.startGame(roomId, playerId, { cardsInRound, trumpSuit });

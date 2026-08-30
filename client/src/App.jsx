@@ -41,6 +41,7 @@ export default function App() {
           onReorderPlayers={actions.reorderPlayers}
           onNextRound={actions.nextRound}
           onRematch={actions.rematch}
+          onLeaveRoom={actions.leaveRoom}
         />
       )}
     </main>
