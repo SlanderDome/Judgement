@@ -90,6 +90,24 @@ export function GameBoard({
   const isSummary = status === "ROUND_SUMMARY";
   const isGameOver = status === "GAME_OVER";
   const isMyTurn = players[roomState.gameConfig.currentTurnIndex]?.playerId === clientPlayerId;
+  const currentTurnPlayer = players[roomState.gameConfig.currentTurnIndex] ?? null;
+  const phaseLabel =
+    {
+      LOBBY: "Lobby",
+      PRE_BIDDING: "Deal",
+      BIDDING: "Bidding",
+      TRICK_PLAYING: "Trick play",
+      ROUND_SUMMARY: "Round complete",
+      GAME_OVER: "Game over"
+    }[status] ?? status;
+  const turnLabel =
+    status === "LOBBY"
+      ? "Waiting for host"
+      : isMyTurn
+        ? "Your turn"
+        : currentTurnPlayer
+          ? `${currentTurnPlayer.nickname} to act`
+          : "Waiting";
 
   const opponents = players
     .filter((player) => player.playerId !== clientPlayerId)
@@ -108,7 +126,7 @@ export function GameBoard({
   const timerEndsAt = roomState.timer?.endsAt ?? null;
 
   return (
-    <div className="game-layout">
+    <div className={`game-layout game-layout--${status.toLowerCase().replace(/_/g, "-")}`}>
       <header className="game-header">
         <div className="game-header-meta">
           <span className="gh-item gh-room">
@@ -127,6 +145,10 @@ export function GameBoard({
           <TrumpIndicator roomState={roomState} />
         </div>
         <div className="game-header-actions">
+          <span className="gh-item gh-state" aria-label={`Phase ${phaseLabel}, ${turnLabel}`}>
+            <strong>{phaseLabel}</strong>
+            <span>{turnLabel}</span>
+          </span>
           <button type="button" className="btn-ghost btn-sm" onClick={onLeaveRoom}>
             Main menu
           </button>

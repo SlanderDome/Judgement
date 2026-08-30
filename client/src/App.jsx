@@ -8,7 +8,7 @@ export default function App() {
   const { roomState, clientPlayerId, isConnected, errorMessage, actions } = useGameState();
 
   return (
-    <main className="app-shell">
+    <main className={`app-shell ${roomState ? "app-shell--game" : "app-shell--lobby"}`}>
       <header className="topbar">
         <div className="brand-block">
           <span className="brand">JUDGEMENT</span>
