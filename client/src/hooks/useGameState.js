@@ -189,6 +189,29 @@ export function useGameState() {
     setErrorMessage("");
   }
 
+  function takeSeat(seatIndex) {
+    if (!roomState || !clientPlayerId) {
+      return;
+    }
+
+    socket.emit("seat:take", {
+      roomId: roomState.roomId,
+      playerId: clientPlayerId,
+      seatIndex
+    });
+  }
+
+  function leaveSeat() {
+    if (!roomState || !clientPlayerId) {
+      return;
+    }
+
+    socket.emit("seat:leave", {
+      roomId: roomState.roomId,
+      playerId: clientPlayerId
+    });
+  }
+
   function startGame(options = {}) {
     if (!roomState || !clientPlayerId) {
       return;
@@ -280,6 +303,8 @@ export function useGameState() {
       createRoom,
       joinRoom,
       leaveRoom,
+      takeSeat,
+      leaveSeat,
       startGame,
       submitBid,
       playCard,

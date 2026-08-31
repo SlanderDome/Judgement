@@ -10,14 +10,17 @@ export const ROOM_STATUS = {
 };
 
 const TURN_TIMEOUT_MS = 20000;
+const BID_TIMEOUT_MS = 30000;
 
-export function createPlayer({ playerId, nickname, socketId, seatIndex }) {
+export const SEAT_COUNT = 10;
+
+export function createPlayer({ playerId, nickname, socketId, seatIndex = null, isAdmin = false }) {
   return {
     playerId,
     nickname,
     socketId,
     seatIndex,
-    isAdmin: seatIndex === 0,
+    isAdmin,
     isOnline: true,
     isActiveInGame: true,
     score: 0,
@@ -32,6 +35,7 @@ export function createRoom({ roomId, player }) {
     roomId,
     adminPlayerId: player.playerId,
     status: ROOM_STATUS.LOBBY,
+    seatCount: SEAT_COUNT,
     players: [player],
     gameConfig: {
       phase: "ASCENDING",
@@ -52,7 +56,8 @@ export function createRoom({ roomId, player }) {
       tricksHistory: []
     },
     timer: {
-      endsAt: null
+      endsAt: null,
+      durationMs: null
     },
     createdAt: Date.now(),
     updatedAt: Date.now()
@@ -113,7 +118,11 @@ function buildNextRoundConfig(room) {
 }
 
 function dealRound(room) {
-  const hands = dealCards(room.players, room.gameConfig.cardsInRound);
+  // Deal around the occupied seats starting from the seat right of the dealer.
+  const ring = getSeatedPlayers(room);
+  const start = firstActorIndex(room);
+  const dealOrder = ring.map((_player, offset) => ring[(start + offset) % ring.length]);
+  const hands = dealCards(dealOrder, room.gameConfig.cardsInRound);
 
   room.players.forEach((player) => {
     player.hand = hands.get(player.playerId) ?? [];
@@ -126,8 +135,8 @@ function dealRound(room) {
 function prepareRound(room) {
   room.status = ROOM_STATUS.PRE_BIDDING;
   room.currentRound = createEmptyCurrentRound();
-  room.gameConfig.currentTurnIndex = room.gameConfig.dealerIndex;
-  room.timer = { endsAt: null };
+  room.gameConfig.currentTurnIndex = firstActorIndex(room);
+  room.timer = { endsAt: null, durationMs: null };
   dealRound(room);
   room.updatedAt = Date.now();
   return room;
@@ -139,15 +148,15 @@ export function startBidding(room) {
   }
 
   room.status = ROOM_STATUS.BIDDING;
-  room.gameConfig.currentTurnIndex = room.gameConfig.dealerIndex;
-  room.timer = { endsAt: Date.now() + TURN_TIMEOUT_MS };
+  room.gameConfig.currentTurnIndex = firstActorIndex(room);
+  room.timer = { endsAt: Date.now() + BID_TIMEOUT_MS, durationMs: BID_TIMEOUT_MS };
   room.updatedAt = Date.now();
   return room;
 }
 
 export function attachPlayerToRoom(room, player) {
+  // New arrivals join as spectators (no seat) until they pick one in the lobby.
   room.players.push(player);
-  room.gameConfig.maxCards = getMaxCardsForPlayers(room.players.length);
   room.updatedAt = Date.now();
   return room;
 }
@@ -182,8 +191,8 @@ export function reconnectPlayer(room, playerId, socketId, nickname) {
 }
 
 export function startGame(room, options = {}) {
-  const activePlayers = room.players.filter((player) => player.isOnline || room.status !== ROOM_STATUS.LOBBY);
-  room.gameConfig.maxCards = getMaxCardsForPlayers(activePlayers.length);
+  const seated = getSeatedPlayers(room);
+  room.gameConfig.maxCards = getMaxCardsForPlayers(seated.length);
   room.gameConfig.phase = "ASCENDING";
   room.gameConfig.cardsInRound = options.cardsInRound ? Math.min(Math.max(1, Number(options.cardsInRound)), room.gameConfig.maxCards) : 1;
   room.gameConfig.roundNumber = 1;
@@ -192,8 +201,33 @@ export function startGame(room, options = {}) {
   return prepareRound(room);
 }
 
+// The occupied seats, in clockwise order. This ring is the single source of turn
+// order: empty seats are simply absent. `gameConfig.dealerIndex` and
+// `currentTurnIndex` are indices into this array, not into `room.players`.
+export function getSeatedPlayers(room) {
+  return room.players
+    .filter((player) => Number.isInteger(player.seatIndex))
+    .sort((a, b) => a.seatIndex - b.seatIndex);
+}
+
+function ringLength(room) {
+  return getSeatedPlayers(room).length;
+}
+
+function isSeated(room, playerId) {
+  return Number.isInteger(room.players.find((player) => player.playerId === playerId)?.seatIndex);
+}
+
+// Play proceeds clockwise around the occupied seats. The first actor each round
+// is the seat immediately clockwise of the dealer ("right of the dealer"), so
+// the dealer is the last to bid.
+function firstActorIndex(room) {
+  const len = ringLength(room);
+  return len ? (room.gameConfig.dealerIndex + 1) % len : 0;
+}
+
 export function getCurrentPlayer(room) {
-  return room.players[room.gameConfig.currentTurnIndex] ?? null;
+  return getSeatedPlayers(room)[room.gameConfig.currentTurnIndex] ?? null;
 }
 
 export function getBiddingContext(room) {
@@ -201,7 +235,12 @@ export function getBiddingContext(room) {
   const totalTricks = room.gameConfig.cardsInRound;
   const forbiddenBidForFinalPlayer = totalTricks - currentBidTotal;
   const currentPlayer = getCurrentPlayer(room);
-  const isFinalBidder = room.currentRound && Object.keys(room.currentRound.bids).length === room.players.length - 1;
+  // The dealer bids last, so the current bidder faces the closing-bid ban only
+  // when it is the dealer's turn.
+  const isFinalBidder =
+    !!room.currentRound &&
+    ringLength(room) > 0 &&
+    room.gameConfig.currentTurnIndex === room.gameConfig.dealerIndex;
 
   return {
     currentBidTotal,
@@ -235,6 +274,10 @@ export function submitBid(room, playerId, bid) {
     throw new Error("Bidding is not open.");
   }
 
+  if (!isSeated(room, playerId)) {
+    throw new Error("You are not seated.");
+  }
+
   const currentPlayer = getCurrentPlayer(room);
   if (!currentPlayer || currentPlayer.playerId !== playerId) {
     throw new Error("It is not your turn to bid.");
@@ -253,14 +296,16 @@ export function submitBid(room, playerId, bid) {
   room.currentRound.bids[playerId] = normalizedBid;
   currentPlayer.currentBid = normalizedBid;
 
-  const nextTurnIndex = room.gameConfig.currentTurnIndex + 1;
-  if (nextTurnIndex >= room.players.length) {
+  const biddingComplete = room.gameConfig.currentTurnIndex === room.gameConfig.dealerIndex;
+  if (biddingComplete) {
     room.status = ROOM_STATUS.TRICK_PLAYING;
-    room.gameConfig.currentTurnIndex = room.gameConfig.dealerIndex;
+    // Trick 1 is led by the seat immediately clockwise of the dealer.
+    room.gameConfig.currentTurnIndex = firstActorIndex(room);
     room.timer.endsAt = null;
   } else {
-    room.gameConfig.currentTurnIndex = nextTurnIndex;
-    room.timer.endsAt = Date.now() + TURN_TIMEOUT_MS;
+    room.gameConfig.currentTurnIndex = (room.gameConfig.currentTurnIndex + 1) % ringLength(room);
+    room.timer.endsAt = Date.now() + BID_TIMEOUT_MS;
+    room.timer.durationMs = BID_TIMEOUT_MS;
   }
 
   room.currentRound.forbiddenBidForFinalPlayer =
@@ -316,14 +361,15 @@ function resolveTrick(room) {
   };
 
   const roundComplete = room.currentRound.tricksHistory.length >= room.gameConfig.cardsInRound;
+  const ring = getSeatedPlayers(room);
 
   if (roundComplete) {
-    room.players.forEach((player) => {
+    ring.forEach((player) => {
       player.score += scorePlayerForRound(player);
     });
 
     room.currentRound.roundSummary = {
-      scores: room.players.map((player) => ({
+      scores: ring.map((player) => ({
         playerId: player.playerId,
         nickname: player.nickname,
         score: player.score,
@@ -338,8 +384,9 @@ function resolveTrick(room) {
       leadSuit: null,
       cardsPlayed: []
     };
-    room.gameConfig.currentTurnIndex = room.players.indexOf(winner);
+    room.gameConfig.currentTurnIndex = ring.findIndex((player) => player.playerId === winner.playerId);
     room.timer.endsAt = Date.now() + TURN_TIMEOUT_MS;
+    room.timer.durationMs = TURN_TIMEOUT_MS;
   }
 
   room.updatedAt = Date.now();
@@ -349,6 +396,10 @@ function resolveTrick(room) {
 export function playCard(room, playerId, cardId) {
   if (room.status !== ROOM_STATUS.TRICK_PLAYING) {
     throw new Error("Cards cannot be played right now.");
+  }
+
+  if (!isSeated(room, playerId)) {
+    throw new Error("You are not seated.");
   }
 
   const currentPlayer = getCurrentPlayer(room);
@@ -379,14 +430,15 @@ export function playCard(room, playerId, cardId) {
     card: selectedCard
   });
 
-  const trickComplete = room.currentRound.currentTrick.cardsPlayed.length >= room.players.length;
+  const trickComplete = room.currentRound.currentTrick.cardsPlayed.length >= ringLength(room);
 
   if (trickComplete) {
     return resolveTrick(room);
   }
 
-  room.gameConfig.currentTurnIndex = (room.gameConfig.currentTurnIndex + 1) % room.players.length;
+  room.gameConfig.currentTurnIndex = (room.gameConfig.currentTurnIndex + 1) % ringLength(room);
   room.timer.endsAt = Date.now() + TURN_TIMEOUT_MS;
+  room.timer.durationMs = TURN_TIMEOUT_MS;
   room.updatedAt = Date.now();
   return room;
 }
@@ -464,8 +516,8 @@ export function advanceRound(room, options = {}) {
   }
 
   const nextRoundNumber = room.gameConfig.roundNumber + 1;
-  const activePlayersCount = room.players.filter((p) => p.isOnline || p.isActiveInGame).length || room.players.length;
-  const maxAllowed = getMaxCardsForPlayers(activePlayersCount);
+  const seatedCount = getSeatedPlayers(room).length || 1;
+  const maxAllowed = getMaxCardsForPlayers(seatedCount);
 
   let nextCards = options.cardsInRound ? Number(options.cardsInRound) : null;
   let nextPhase = room.gameConfig.phase;
@@ -489,46 +541,79 @@ export function advanceRound(room, options = {}) {
   room.gameConfig.phase = nextPhase;
   room.gameConfig.cardsInRound = nextCards;
   room.gameConfig.trumpSuit = normalizeSuit(options.trumpSuit) || getTrumpSuit(nextRoundNumber);
-  room.gameConfig.dealerIndex = (room.gameConfig.dealerIndex + 1) % room.players.length;
+  room.gameConfig.dealerIndex = (room.gameConfig.dealerIndex + 1) % seatedCount;
   return prepareRound(room);
 }
 
+export function takeSeat(room, playerId, seatIndex) {
+  if (room.status !== ROOM_STATUS.LOBBY) {
+    throw new Error("Seats are locked once the game starts.");
+  }
+
+  const player = room.players.find((entry) => entry.playerId === playerId);
+  if (!player) {
+    throw new Error("You are not in this room.");
+  }
+
+  const seat = Number(seatIndex);
+  if (!Number.isInteger(seat) || seat < 0 || seat >= room.seatCount) {
+    throw new Error("That seat does not exist.");
+  }
+
+  const occupant = room.players.find(
+    (entry) => entry.playerId !== playerId && entry.seatIndex === seat
+  );
+  if (occupant) {
+    throw new Error("That seat is taken.");
+  }
+
+  player.seatIndex = seat;
+  room.gameConfig.maxCards = getMaxCardsForPlayers(getSeatedPlayers(room).length || 1);
+  room.updatedAt = Date.now();
+  return room;
+}
+
+export function leaveSeat(room, playerId) {
+  if (room.status !== ROOM_STATUS.LOBBY) {
+    throw new Error("Seats are locked once the game starts.");
+  }
+
+  const player = room.players.find((entry) => entry.playerId === playerId);
+  if (!player) {
+    throw new Error("You are not in this room.");
+  }
+
+  player.seatIndex = null;
+  room.gameConfig.maxCards = getMaxCardsForPlayers(getSeatedPlayers(room).length || 1);
+  room.updatedAt = Date.now();
+  return room;
+}
+
 export function reorderPlayers(room, orderedPlayerIds) {
+  if (room.status !== ROOM_STATUS.LOBBY) {
+    throw new Error("Playing order is locked once the game starts.");
+  }
+
   if (!Array.isArray(orderedPlayerIds)) {
     throw new Error("Invalid playing order.");
   }
 
-  const currentIds = room.players.map((player) => player.playerId);
+  const seated = getSeatedPlayers(room);
+  const seatedIds = seated.map((player) => player.playerId);
   const isPermutation =
-    orderedPlayerIds.length === currentIds.length &&
-    orderedPlayerIds.every((id) => currentIds.includes(id));
+    orderedPlayerIds.length === seatedIds.length &&
+    orderedPlayerIds.every((id) => seatedIds.includes(id));
 
   if (!isPermutation) {
-    throw new Error("Playing order must include every player exactly once.");
+    throw new Error("Playing order must include every seated player exactly once.");
   }
 
-  const allowedStatuses = [ROOM_STATUS.LOBBY, ROOM_STATUS.PRE_BIDDING, ROOM_STATUS.ROUND_SUMMARY];
-  if (!allowedStatuses.includes(room.status)) {
-    throw new Error("Playing order can only be changed between rounds.");
-  }
-
-  const leaderId = room.players[room.gameConfig.dealerIndex]?.playerId;
-  const currentId = room.players[room.gameConfig.currentTurnIndex]?.playerId;
+  // Re-assign the occupied seat numbers to players in the requested order.
+  const occupiedSeats = seated.map((player) => player.seatIndex);
   const playersById = new Map(room.players.map((player) => [player.playerId, player]));
-
-  room.players = orderedPlayerIds.map((id) => playersById.get(id));
-  room.players.forEach((player, index) => {
-    player.seatIndex = index;
+  orderedPlayerIds.forEach((id, index) => {
+    playersById.get(id).seatIndex = occupiedSeats[index];
   });
-
-  if (leaderId) {
-    room.gameConfig.dealerIndex = room.players.findIndex((player) => player.playerId === leaderId);
-  }
-
-  if (currentId) {
-    const nextIndex = room.players.findIndex((player) => player.playerId === currentId);
-    room.gameConfig.currentTurnIndex = nextIndex >= 0 ? nextIndex : 0;
-  }
 
   room.updatedAt = Date.now();
   return room;
@@ -562,6 +647,7 @@ export function sanitizeRoomForPlayer(room, playerId) {
     roomId: room.roomId,
     adminPlayerId: room.adminPlayerId,
     status: room.status,
+    seatCount: room.seatCount ?? SEAT_COUNT,
     createdAt: room.createdAt,
     updatedAt: room.updatedAt,
     gameConfig: room.gameConfig,

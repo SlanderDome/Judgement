@@ -50,7 +50,8 @@ Judgement/
    npm run dev:client
    ```
 
-The backend listens on `http://localhost:3001` and the client dev server on `http://localhost:3000`.
+The backend listens on `http://localhost:3001` and the client dev server on `http://localhost:5173`.
+The client connects to the backend via `VITE_SOCKET_URL` (defaults to `http://localhost:3001` in dev); see `client/.env.example`.
 
 ## Current Scope
 

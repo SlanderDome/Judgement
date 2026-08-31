@@ -1,32 +1,17 @@
-import { useEffect, useState } from "react";
+import { useCountdown } from "../lib/useCountdown.js";
 
 const RADIUS = 18;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
-export function TurnTimerBar({ endsAt }) {
-  const [remainingMs, setRemainingMs] = useState(() =>
-    endsAt ? Math.max(0, endsAt - Date.now()) : 0
-  );
-
-  useEffect(() => {
-    if (!endsAt) {
-      setRemainingMs(0);
-      return undefined;
-    }
-
-    setRemainingMs(Math.max(0, endsAt - Date.now()));
-    const intervalId = window.setInterval(() => {
-      setRemainingMs(Math.max(0, endsAt - Date.now()));
-    }, 250);
-
-    return () => window.clearInterval(intervalId);
-  }, [endsAt]);
+export function TurnTimerBar({ endsAt, durationMs = 20000 }) {
+  const remainingMs = useCountdown(endsAt);
 
   if (!endsAt) {
     return null;
   }
 
-  const percentage = Math.max(0, Math.min(100, (remainingMs / 20000) * 100));
+  const span = durationMs > 0 ? durationMs : 20000;
+  const percentage = Math.max(0, Math.min(100, (remainingMs / span) * 100));
   const secondsRemaining = Math.ceil(remainingMs / 1000);
   const urgencyClass = secondsRemaining <= 1 ? "is-critical" : secondsRemaining <= 5 ? "is-urgent" : secondsRemaining <= 10 ? "is-warm" : "is-calm";
 

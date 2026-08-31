@@ -9,9 +9,9 @@ export function PlayerSeat({
   isDealer = false,
   isRecentlyActed = false,
   timerEndsAt = null,
-  slot = null
+  timerDurationMs = null
 }) {
-  const hue = (player.seatIndex * 137.508) % 360;
+  const hue = ((player.seatIndex ?? 0) * 137.508) % 360;
   const cardCount = player.handCount ?? player.hand?.length ?? 0;
   const hasBid = player.currentBid != null;
   const isOffline = !player.isOnline;
@@ -35,8 +35,7 @@ export function PlayerSeat({
         isTurn ? "seat--active" : "",
         isRecentlyActed ? "seat--recent" : "",
         isOffline ? "seat--offline" : isDimmed ? "seat--dim" : "",
-        isDealer ? "seat--dealer-state" : "",
-        slot ? `seat-slot seat-slot--${slot}` : ""
+        isDealer ? "seat--dealer-state" : ""
       ].join(" ")}
       style={{ "--seat-hue": hue }}
       initial={{ opacity: 0, y: 8 }}
@@ -52,7 +51,9 @@ export function PlayerSeat({
             D
           </span>
         )}
-        {isTurn && timerEndsAt && <TurnTimerBar endsAt={timerEndsAt} />}
+        {isTurn && timerEndsAt && (
+          <TurnTimerBar endsAt={timerEndsAt} durationMs={timerDurationMs ?? undefined} />
+        )}
       </div>
       <div className="seat-info">
         <span className="seat-name">
