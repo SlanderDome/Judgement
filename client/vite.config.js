@@ -7,6 +7,9 @@ export default defineConfig({
     emptyOutDir: false
   },
   server: {
-    port: 3000
+    // Dev server runs on 5173 by default; override with VITE_DEV_PORT if needed.
+    // strictPort keeps the port predictable so the backend CORS origin stays valid.
+    port: Number(process.env.VITE_DEV_PORT) || 5173,
+    strictPort: true
   }
 });

@@ -2,28 +2,16 @@ import { useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { AdminRoundControl } from "./AdminRoundControl.jsx";
 import { BiddingOverlay } from "./BiddingOverlay.jsx";
+import { CircularTable } from "./CircularTable.jsx";
+import { ConfirmLeaveModal } from "./ConfirmLeaveModal.jsx";
 import { ConnectionBadge } from "./ConnectionBadge.jsx";
-import { PlayerSeat } from "./PlayerSeat.jsx";
 import { PlayingHand } from "./PlayingHand.jsx";
 import { TrumpIndicator } from "./TrumpIndicator.jsx";
 import { TrickTable } from "./TrickTable.jsx";
-
-const SEAT_SLOTS = {
-  1: ["top"],
-  2: ["left", "right"],
-  3: ["left", "top", "right"],
-  4: ["left", "top-left", "top-right", "right"],
-  5: ["left", "top-left", "top", "top-right", "right"],
-  6: ["left", "top-left", "top", "top-right", "right"]
-};
-
-function slotForOpponent(index, count) {
-  const slots = SEAT_SLOTS[count] ?? ["top"];
-  return slots[index % slots.length];
-}
+import { currentTurnPlayer, dealerPlayer, isSeated, seatedPlayers } from "../lib/seats.js";
 
 function Scoreboard({ roomState, clientPlayerId, action }) {
-  const scores = roomState.currentRound?.roundSummary?.scores ?? roomState.players;
+  const scores = roomState.currentRound?.roundSummary?.scores ?? seatedPlayers(roomState);
   const isGameOver = roomState.status === "GAME_OVER";
 
   return (
@@ -74,17 +62,19 @@ export function GameBoard({
   onSubmitBid,
   onPlayCard,
   onStartBidding,
-  onReorderPlayers,
+  onTakeSeat,
   onNextRound,
   onRematch,
   onLeaveRoom
 }) {
   const [adminOpen, setAdminOpen] = useState(false);
+  const [leaveOpen, setLeaveOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const dropZoneRef = useRef(null);
 
   const players = roomState.players;
   const clientPlayer = players.find((player) => player.playerId === clientPlayerId);
+  const clientSeated = isSeated(clientPlayer);
   const isAdmin = roomState.adminPlayerId === clientPlayerId;
   const status = roomState.status;
   const isLobby = status === "LOBBY";
@@ -92,38 +82,35 @@ export function GameBoard({
   const isPlaying = status === "TRICK_PLAYING";
   const isSummary = status === "ROUND_SUMMARY";
   const isGameOver = status === "GAME_OVER";
-  const isMyTurn = players[roomState.gameConfig.currentTurnIndex]?.playerId === clientPlayerId;
-  const currentTurnPlayer = players[roomState.gameConfig.currentTurnIndex] ?? null;
+  const turnPlayer = currentTurnPlayer(roomState);
+  const isMyTurn = turnPlayer?.playerId === clientPlayerId;
   const currentTrickCards = roomState.currentRound?.currentTrick?.cardsPlayed ?? [];
   const recentlyActedPlayerId =
     currentTrickCards[currentTrickCards.length - 1]?.playerId ?? roomState.currentRound?.lastTrick?.winnerPlayerId ?? null;
   const phaseLabel =
     {
-      LOBBY: "Waiting",
+      LOBBY: "Lobby",
       PRE_BIDDING: "Waiting",
       BIDDING: "Bidding",
       TRICK_PLAYING: isMyTurn ? "Your turn" : "Waiting",
       ROUND_SUMMARY: "Round complete",
       GAME_OVER: "Round complete"
     }[status] ?? status;
+  const turnActive = status === "BIDDING" || isPlaying;
   const turnLabel =
     status === "LOBBY"
       ? "Waiting for host"
-      : isMyTurn
-        ? "Your turn"
-        : currentTurnPlayer
-          ? `${currentTurnPlayer.nickname} to act`
-          : "Waiting";
+      : status === "PRE_BIDDING"
+        ? "Get ready"
+        : !turnActive
+          ? "Waiting"
+          : isMyTurn
+            ? "Your turn"
+            : turnPlayer
+              ? `${turnPlayer.nickname} to act`
+              : "Waiting";
 
-  const opponents = players
-    .filter((player) => player.playerId !== clientPlayerId)
-    .sort((a, b) => {
-      const aDistance = (a.seatIndex - (clientPlayer?.seatIndex ?? 0) + players.length) % players.length;
-      const bDistance = (b.seatIndex - (clientPlayer?.seatIndex ?? 0) + players.length) % players.length;
-      return aDistance - bDistance;
-    });
-
-  const dealerPlayerId = players[roomState.gameConfig.dealerIndex]?.playerId;
+  const dealerPlayerId = dealerPlayer(roomState)?.playerId;
 
   const leadSuit = roomState.currentRound?.currentTrick?.leadSuit;
   const hand = clientPlayer?.hand ?? [];
@@ -134,6 +121,23 @@ export function GameBoard({
 
   const canOpenHostPanel = isAdmin && (isLobby || isPreBidding || isSummary);
   const timerEndsAt = roomState.timer?.endsAt ?? null;
+  const timerDurationMs = roomState.timer?.durationMs ?? null;
+  const seatedCount = seatedPlayers(roomState).length;
+  const seatCap = roomState.seatCount ?? 10;
+  // "Whose turn" and the dealer button only make sense once a hand is underway.
+  const activeTurnId = status === "BIDDING" || isPlaying ? turnPlayer?.playerId ?? null : null;
+  const showDealerId = isLobby ? null : dealerPlayerId;
+
+  const tableCenter = isLobby ? (
+    <div className="table-lobby-note">
+      <strong>
+        {seatedCount}/{seatCap}
+      </strong>
+      {seatedCount < 2 ? "Waiting for players to sit down" : "Ready when the host starts"}
+    </div>
+  ) : (
+    <TrickTable roomState={roomState} dropZoneRef={dropZoneRef} dropActive={isDragging} />
+  );
 
   return (
     <div className={`game-layout game-layout--${status.toLowerCase().replace(/_/g, "-")}`}>
@@ -142,17 +146,32 @@ export function GameBoard({
           <span className="gh-item gh-room">
             Room <strong className="room-code">{roomState.roomId}</strong>
           </span>
-          <span className="gh-dot" aria-hidden="true">·</span>
-          <span className="gh-item">
-            Round <strong>{roomState.gameConfig.roundNumber}</strong>
-          </span>
-          <span className="gh-dot" aria-hidden="true">·</span>
-          <span className="gh-item">
-            {roomState.gameConfig.phase === "ASCENDING" ? "Ascending" : "Descending"}{" "}
-            <strong>{roomState.gameConfig.cardsInRound}</strong> {roomState.gameConfig.cardsInRound === 1 ? "card" : "cards"}
-          </span>
-          <span className="gh-dot" aria-hidden="true">·</span>
-          <TrumpIndicator roomState={roomState} />
+          {isLobby ? (
+            <>
+              <span className="gh-dot" aria-hidden="true">·</span>
+              <span className="gh-item">
+                <strong>
+                  {seatedCount}/{seatCap}
+                </strong>{" "}
+                seated
+              </span>
+            </>
+          ) : (
+            <>
+              <span className="gh-dot" aria-hidden="true">·</span>
+              <span className="gh-item">
+                Round <strong>{roomState.gameConfig.roundNumber}</strong>
+              </span>
+              <span className="gh-dot" aria-hidden="true">·</span>
+              <span className="gh-item">
+                {roomState.gameConfig.phase === "ASCENDING" ? "Ascending" : "Descending"}{" "}
+                <strong>{roomState.gameConfig.cardsInRound}</strong>{" "}
+                {roomState.gameConfig.cardsInRound === 1 ? "card" : "cards"}
+              </span>
+              <span className="gh-dot" aria-hidden="true">·</span>
+              <TrumpIndicator roomState={roomState} />
+            </>
+          )}
         </div>
         <div className="game-header-actions">
           <ConnectionBadge isConnected={isConnected} />
@@ -160,7 +179,7 @@ export function GameBoard({
             <strong>{phaseLabel}</strong>
             <span>{turnLabel}</span>
           </span>
-          <button type="button" className="btn-ghost btn-sm" onClick={onLeaveRoom}>
+          <button type="button" className="btn-ghost btn-sm" onClick={() => setLeaveOpen(true)}>
             Main menu
           </button>
           {canOpenHostPanel && (
@@ -172,44 +191,37 @@ export function GameBoard({
       </header>
 
       <div className="table-wrap">
-        {opponents.length > 0 && (
-          <div className="opponents">
-            {opponents.map((player, index) => (
-              <PlayerSeat
-                key={player.playerId}
-                player={player}
-                slot={slotForOpponent(index, opponents.length)}
-                isTurn={players[roomState.gameConfig.currentTurnIndex]?.playerId === player.playerId}
-                isDimmed={!player.isOnline}
-                isDealer={player.playerId === dealerPlayerId}
-                isRecentlyActed={player.playerId === recentlyActedPlayerId && !isMyTurn}
-                timerEndsAt={
-                  players[roomState.gameConfig.currentTurnIndex]?.playerId === player.playerId ? timerEndsAt : null
-                }
-              />
-            ))}
-          </div>
-        )}
-
-        <TrickTable
+        <CircularTable
           roomState={roomState}
-          dropZoneRef={dropZoneRef}
-          dropActive={isDragging}
+          clientPlayerId={clientPlayerId}
+          canSit={isLobby}
+          isSeated={clientSeated}
+          dealerPlayerId={showDealerId}
+          currentTurnPlayerId={activeTurnId}
+          recentlyActedPlayerId={!isMyTurn ? recentlyActedPlayerId : null}
+          timerEndsAt={timerEndsAt}
+          timerDurationMs={timerDurationMs}
+          onTakeSeat={onTakeSeat}
+          centerSlot={tableCenter}
         />
       </div>
 
-      {clientPlayer && (
+      {clientPlayer && !clientSeated && (
+        <div className="spectator-bar">
+          {isLobby
+            ? "You're watching — tap an open seat to join the game."
+            : "You're watching this match. Seats open up when the game returns to the lobby."}
+        </div>
+      )}
+
+      {clientPlayer && clientSeated && isLobby && (
+        <div className="spectator-bar">
+          You're seated. Waiting for the host to start the game…
+        </div>
+      )}
+
+      {clientPlayer && clientSeated && !isLobby && (
         <div className="self-area">
-          <div className="self-row">
-            <PlayerSeat
-              player={clientPlayer}
-              isClient
-              isTurn={isMyTurn}
-              isDealer={clientPlayer.playerId === dealerPlayerId}
-              isRecentlyActed={clientPlayer.playerId === recentlyActedPlayerId && !isMyTurn}
-              timerEndsAt={isMyTurn ? timerEndsAt : null}
-            />
-          </div>
           <BiddingOverlay roomState={roomState} clientPlayerId={clientPlayerId} onSubmitBid={onSubmitBid} />
           <PlayingHand
             cards={hand}
@@ -246,13 +258,18 @@ export function GameBoard({
             roomState={roomState}
             clientPlayerId={clientPlayerId}
             action={
-              isAdmin ? (
-                <button type="button" className="btn-primary" onClick={onRematch}>
-                  Rematch
+              <>
+                <button type="button" className="btn-ghost" onClick={onLeaveRoom}>
+                  Return to main menu
                 </button>
-              ) : (
-                <span className="chip">Waiting for the host to start a rematch</span>
-              )
+                {isAdmin ? (
+                  <button type="button" className="btn-primary" onClick={onRematch}>
+                    Rematch
+                  </button>
+                ) : (
+                  <span className="chip">Waiting for the host to start a rematch</span>
+                )}
+              </>
             }
           />
         </div>
@@ -265,11 +282,16 @@ export function GameBoard({
             onStartGame={onStartGame}
             onStartBidding={onStartBidding}
             onNextRound={onNextRound}
-            onReorder={onReorderPlayers}
             onClose={() => setAdminOpen(false)}
           />
         </motion.div>
       )}
+
+      <ConfirmLeaveModal
+        open={leaveOpen}
+        onCancel={() => setLeaveOpen(false)}
+        onConfirm={onLeaveRoom}
+      />
     </div>
   );
 }

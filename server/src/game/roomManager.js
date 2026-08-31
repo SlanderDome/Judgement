@@ -5,6 +5,8 @@ import {
   createPlayer,
   createRoom,
   getBiddingContext,
+  getSeatedPlayers,
+  leaveSeat as leaveRoomSeat,
   markPlayerDisconnected,
   reconnectPlayer,
   playCard,
@@ -13,7 +15,8 @@ import {
   resetRoom,
   startBidding as startBiddingPhase,
   startGame,
-  submitBid
+  submitBid,
+  takeSeat as takeRoomSeat
 } from "./stateEngine.js";
 
 const ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -59,7 +62,8 @@ export class RoomManager {
       playerId: resolvedPlayerId,
       nickname: normalizeNickname(nickname),
       socketId,
-      seatIndex: 0
+      seatIndex: null,
+      isAdmin: true
     });
     const room = createRoom({ roomId, player });
     this.rooms.set(roomId, room);
@@ -84,7 +88,7 @@ export class RoomManager {
       playerId: crypto.randomUUID(),
       nickname: normalizeNickname(nickname, room.players.length),
       socketId,
-      seatIndex: room.players.length
+      seatIndex: null
     });
 
     attachPlayerToRoom(room, player);
@@ -106,6 +110,28 @@ export class RoomManager {
     return this.rooms.get(roomId) ?? null;
   }
 
+  takeSeat(roomId, playerId, seatIndex) {
+    const room = this.getRoom(roomId);
+
+    if (!room) {
+      throw new Error("Room not found.");
+    }
+
+    takeRoomSeat(room, playerId, seatIndex);
+    return room;
+  }
+
+  leaveSeat(roomId, playerId) {
+    const room = this.getRoom(roomId);
+
+    if (!room) {
+      throw new Error("Room not found.");
+    }
+
+    leaveRoomSeat(room, playerId);
+    return room;
+  }
+
   startGame(roomId, playerId, options = {}) {
     const room = this.getRoom(roomId);
 
@@ -117,8 +143,8 @@ export class RoomManager {
       throw new Error("Only the room admin can start the game.");
     }
 
-    if (room.players.length < 2) {
-      throw new Error("At least 2 players are required to start.");
+    if (getSeatedPlayers(room).length < 2) {
+      throw new Error("At least 2 seated players are required to start.");
     }
 
     return startGame(room, options);

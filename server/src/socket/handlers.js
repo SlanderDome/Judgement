@@ -124,6 +124,26 @@ export function registerSocketHandlers(io) {
       scheduleRoomTimeout(io, room.roomId);
     });
 
+    socket.on("seat:take", ({ roomId, playerId, seatIndex } = {}) => {
+      try {
+        const room = roomManager.takeSeat(roomId, playerId, seatIndex);
+        emitRoomState(io, room);
+        scheduleRoomTimeout(io, roomId);
+      } catch (error) {
+        emitError(socket, error.message, "SEAT_REJECTED");
+      }
+    });
+
+    socket.on("seat:leave", ({ roomId, playerId } = {}) => {
+      try {
+        const room = roomManager.leaveSeat(roomId, playerId);
+        emitRoomState(io, room);
+        scheduleRoomTimeout(io, roomId);
+      } catch (error) {
+        emitError(socket, error.message, "SEAT_REJECTED");
+      }
+    });
+
     socket.on("room:leave", () => {
       const disconnected = roomManager.disconnectSocket(socket.id);
       if (!disconnected) {

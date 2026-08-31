@@ -948,6 +948,255 @@ input:focus {
     0 0 0 1px rgba(231, 207, 143, 0.15);
 }
 
+/* ---------- Circular 10-seat table ---------- */
+
+/* Mobile-first: a portrait oval that fills the vertical space between the
+   header and the hand. Desktop widens it into a landscape oval below. */
+.table-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  padding: 6px 4px;
+  overflow: visible;
+}
+
+.poker-table {
+  /* Ring geometry — overridden per breakpoint. --seat-radius-* is how far a
+     seat centre sits from the table centre, as a % of the table box. */
+  --seat-scale: 0.58;
+  --seat-radius-x: 46%;
+  --seat-radius-y: 44%;
+
+  position: relative;
+  width: min(100%, 26rem);
+  height: min(50vh, 27rem);
+  max-height: 100%;
+  border-radius: 44% / 46%;
+  border: 10px solid var(--wood);
+  background:
+    radial-gradient(120% 100% at 50% 32%, rgba(231, 207, 143, 0.1) 0%, transparent 40%),
+    radial-gradient(130% 110% at 50% 48%, rgba(58, 146, 106, 0.22) 0%, transparent 66%),
+    linear-gradient(160deg, var(--felt-warm) 0%, var(--felt) 46%, var(--felt-deep) 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.4),
+    inset 0 0 90px rgba(0, 0, 0, 0.36),
+    0 24px 60px rgba(0, 0, 0, 0.46);
+}
+
+.poker-table__felt {
+  position: absolute;
+  inset: 12px;
+  border-radius: inherit;
+  pointer-events: none;
+  border: 1px solid rgba(246, 239, 225, 0.1);
+  box-shadow:
+    inset 0 0 0 6px rgba(0, 0, 0, 0.12),
+    inset 0 0 26px rgba(0, 0, 0, 0.22);
+  background: radial-gradient(120% 85% at 50% 42%, rgba(255, 255, 255, 0.04) 0%, transparent 46%, rgba(0, 0, 0, 0.16) 100%);
+}
+
+.poker-table__center {
+  position: absolute;
+  inset: 26% 22%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+/* The trick table keeps its layout but drops its own framing inside the oval. */
+.poker-table__center .table-stage {
+  flex: none;
+  width: 100%;
+  max-height: none;
+  aspect-ratio: auto;
+}
+
+.poker-table__center .table-felt {
+  min-height: 0;
+  border: none;
+  border-radius: 20px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.poker-table__center .table-felt::before,
+.poker-table__center .table-felt::after {
+  display: none;
+}
+
+.table-lobby-note {
+  color: var(--ivory-soft);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.table-lobby-note strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  color: var(--gold-light);
+}
+
+.table-seat {
+  position: absolute;
+  left: calc(50% + var(--seat-x, 0) * var(--seat-radius-x));
+  top: calc(50% + var(--seat-y, 0) * var(--seat-radius-y));
+  transform: translate(-50%, -50%) scale(var(--seat-scale));
+  z-index: 5;
+}
+
+.poker-table .seat {
+  flex-direction: column;
+  align-items: center;
+  gap: 0.12rem;
+  min-width: 82px;
+  max-width: 108px;
+  padding: 0.26rem 0.44rem;
+  background: linear-gradient(180deg, rgba(9, 20, 16, 0.86), rgba(9, 20, 16, 0.68));
+  border-color: rgba(246, 239, 225, 0.16);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.42);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+
+/* Empty seat — clickable "SIT" in the lobby */
+.seat-sit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  width: 5rem;
+  height: 5rem;
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--ivory-soft);
+  font-family: var(--font-body);
+  background: rgba(8, 24, 20, 0.5);
+  border: 2px dashed rgba(246, 239, 225, 0.36);
+  transition: transform 140ms ease, border-color 140ms ease, background 140ms ease, color 140ms ease;
+}
+
+.seat-sit:hover,
+.seat-sit:focus-visible {
+  transform: scale(1.07);
+  color: var(--ink);
+  background: var(--gold-light);
+  border-color: var(--gold-light);
+  outline: none;
+}
+
+.seat-sit__label {
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  padding-left: 0.22em;
+}
+
+.seat-sit__num {
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  opacity: 0.65;
+}
+
+.seat-sit--move {
+  border-style: dotted;
+  opacity: 0.72;
+}
+
+/* Empty seat — passive (game in progress) */
+.seat-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.2rem;
+  height: 3.2rem;
+  border-radius: 50%;
+  border: 1px dashed rgba(246, 239, 225, 0.22);
+  background: rgba(8, 24, 20, 0.42);
+}
+
+.seat-empty__num {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: rgba(246, 239, 225, 0.5);
+  letter-spacing: 0.08em;
+}
+
+.spectator-bar {
+  flex: 0 0 auto;
+  align-self: center;
+  margin: 6px auto 0;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  text-align: center;
+  color: var(--ivory-soft);
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+}
+
+/* Small phones — tighten the ring and shrink seats further */
+@media (max-width: 400px) {
+  .poker-table {
+    --seat-scale: 0.52;
+    --seat-radius-x: 42%;
+    --seat-radius-y: 45%;
+    border-width: 8px;
+  }
+
+  .seat-sit {
+    width: 4.2rem;
+    height: 4.2rem;
+  }
+}
+
+/* Desktop — a wide landscape oval with the ring pushed out to the rail */
+@media (min-width: 861px) {
+  .table-wrap {
+    width: min(1280px, 100%);
+    margin: 0 auto;
+    padding: clamp(8px, 1.4vh, 18px) clamp(28px, 5vw, 96px);
+  }
+
+  .poker-table {
+    /* Height is driven by the flex/grid row it lives in (see the desktop
+       composition block), so the oval shrinks on short viewports instead of
+       forcing the page to scroll. Width follows from the aspect ratio. */
+    --seat-scale: 0.82;
+    --seat-radius-x: 46%;
+    --seat-radius-y: 47%;
+    width: auto;
+    height: 100%;
+    max-width: 100%;
+    max-height: min(100%, 40rem);
+    aspect-ratio: 1.62 / 1;
+    border-radius: 46% / 50%;
+    border-width: 14px;
+  }
+
+  .poker-table__center {
+    inset: 26% 22%;
+  }
+}
+
+/* Taller desktops — let the seats and oval grow into the extra height */
+@media (min-width: 861px) and (min-height: 820px) {
+  .poker-table {
+    --seat-scale: 0.9;
+    max-height: min(100%, 44rem);
+  }
+}
+
+@media (min-width: 1200px) and (min-height: 940px) {
+  .poker-table {
+    --seat-scale: 0.98;
+  }
+}
+
 .table-inner {
   position: relative;
   z-index: 1;
@@ -1352,9 +1601,123 @@ input:focus {
   font-weight: 800;
 }
 
+.bidding-head-right {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+/* 30s bidding countdown — prominent but calm */
+.bid-timer {
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.18rem;
+  padding: 0.3rem 0.62rem 0.42rem;
+  border-radius: 12px;
+  border: 1px solid rgba(94, 234, 212, 0.24);
+  background: rgba(94, 234, 212, 0.08);
+  font-variant-numeric: tabular-nums;
+  color: var(--ivory);
+  overflow: hidden;
+}
+
+.bid-timer-count {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.bid-timer-unit {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ivory-mute);
+}
+
+.bid-timer-track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: rgba(246, 239, 225, 0.1);
+}
+
+.bid-timer-fill {
+  display: block;
+  height: 100%;
+  transform-origin: left center;
+  background: currentColor;
+  transition: transform 250ms linear;
+}
+
+.bid-timer.is-calm {
+  color: #5eead4;
+}
+
+.bid-timer.is-warm {
+  color: var(--gold-light);
+  border-color: rgba(231, 207, 143, 0.34);
+  background: rgba(231, 207, 143, 0.1);
+}
+
+.bid-timer.is-urgent {
+  color: #f0a3a3;
+  border-color: rgba(179, 40, 54, 0.44);
+  background: rgba(179, 40, 54, 0.14);
+  animation: bidTimerPulse 1s ease-in-out infinite;
+}
+
+@keyframes bidTimerPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(179, 40, 54, 0); }
+  50% { box-shadow: 0 0 0 4px rgba(179, 40, 54, 0.14); }
+}
+
 .bidding-panel .bid-grid {
   margin-top: 0;
   grid-template-columns: repeat(auto-fit, minmax(48px, 1fr));
+}
+
+/* Confirm-leave dialog */
+.confirm-card {
+  width: min(400px, 100%);
+  padding: 1.4rem 1.4rem 1.25rem;
+}
+
+.confirm-card .overlay-head {
+  margin-bottom: 0;
+}
+
+.confirm-card .overlay-head h2 {
+  font-size: 1.15rem;
+}
+
+.confirm-body {
+  margin: 0.4rem 0 0;
+  color: var(--ivory-soft);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.confirm-card .overlay-actions {
+  margin-top: 1.4rem;
+}
+
+@media (max-width: 560px) {
+  .confirm-card {
+    width: 100%;
+  }
+
+  .confirm-card .overlay-actions {
+    flex-direction: column-reverse;
+  }
+
+  .confirm-card .overlay-actions button {
+    width: 100%;
+  }
 }
 
 /* Playing order editor */
@@ -1723,8 +2086,31 @@ input:focus {
   }
 
   .game-header {
-    font-size: 0.8rem;
-    gap: 0.6rem;
+    font-size: 0.74rem;
+    gap: 0.35rem 0.4rem;
+    padding: 8px 10px;
+    border-radius: 14px;
+  }
+
+  .game-header-meta,
+  .game-header-actions {
+    gap: 0.3rem 0.35rem;
+  }
+
+  .game-header .gh-item {
+    padding: 0.26rem 0.5rem;
+  }
+
+  .game-header .gh-dot {
+    display: none;
+  }
+
+  .connection-text {
+    display: none;
+  }
+
+  .connection-dot-badge {
+    padding: 0.3rem;
   }
 
   .seat-name {
@@ -1756,10 +2142,27 @@ input:focus {
 /* ---------- Desktop tabletop composition ---------- */
 
 @media (min-width: 861px) {
+  /* Lock the gameplay screen to the visible viewport so the whole
+     composition (status row + felt + hand) fits with no page scroll.
+     dvh accounts for browser chrome differences; vh is the fallback. */
+  .app-shell--game {
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    justify-content: center;
+    /* Contains the absolutely-positioned seat ring / drop shadows.
+       The content itself is sized to fit — this is not the fix. */
+    overflow: hidden;
+  }
+
   .game-layout {
     display: grid;
     grid-template-rows: auto minmax(0, 1fr) auto;
-    gap: clamp(10px, 1.2vh, 18px);
+    gap: clamp(8px, 1.2vh, 16px);
+    height: 100%;
+    /* On very tall / ultrawide screens the composition stops stretching and
+       becomes a centred stage rather than a floating felt + distant hand. */
+    max-height: 64rem;
     min-height: 0;
     padding-top: 0;
     perspective: 1400px;
@@ -1863,9 +2266,10 @@ input:focus {
 
   .table-wrap {
     width: min(1280px, 100%);
+    height: 100%;
     min-height: 0;
     margin: 0 auto;
-    padding: clamp(8px, 1.2vh, 16px) clamp(20px, 3vw, 56px);
+    padding: clamp(4px, 1.2vh, 14px) clamp(20px, 3vw, 56px);
     display: grid;
     place-items: center;
   }
@@ -1898,13 +2302,14 @@ input:focus {
   }
 
   .self-area {
+    /* Scope the hand-card size to the viewport so the bottom row shrinks on
+       short screens rather than pushing the felt off-screen. Mobile keeps
+       its own --card-w-hand untouched. */
+    --card-w-hand: clamp(70px, min(9vw, 12vh), 118px);
     width: min(1180px, 100%);
+    min-height: 0;
     margin: 0 auto;
-    gap: 8px;
-  }
-
-  .self-row {
-    justify-content: center;
+    gap: 6px;
   }
 
   .self-area .hand {
@@ -1912,8 +2317,9 @@ input:focus {
   }
 
   .fan-hand {
-    min-height: clamp(128px, 15vh, 168px);
-    padding: 18px 16px 4px;
+    min-height: 0;
+    max-height: 24vh;
+    padding: clamp(10px, 1.6vh, 18px) 16px 4px;
   }
 
   .seat {

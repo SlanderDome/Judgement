@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { seatedPlayers } from "../lib/seats.js";
 
 const SUITS = [
   { key: "SPADES", label: "Spades", pip: "♠", red: false },
@@ -7,26 +8,14 @@ const SUITS = [
   { key: "HEARTS", label: "Hearts", pip: "♥", red: true }
 ];
 
-function movePlayerIds(players, playerId, direction) {
-  const ids = players.map((player) => player.playerId);
-  const index = ids.indexOf(playerId);
-  const target = index + direction;
-
-  if (index < 0 || target < 0 || target >= ids.length) {
-    return ids;
-  }
-
-  [ids[index], ids[target]] = [ids[target], ids[index]];
-  return ids;
-}
-
-export function AdminRoundControl({ roomState, onStartGame, onStartBidding, onNextRound, onReorder, onClose }) {
+export function AdminRoundControl({ roomState, onStartGame, onStartBidding, onNextRound, onClose }) {
   const isLobby = roomState.status === "LOBBY";
   const isPreBidding = roomState.status === "PRE_BIDDING";
   const isSummary = roomState.status === "ROUND_SUMMARY";
   const canConfigure = isLobby || isSummary;
 
-  const activePlayersCount = roomState.players.filter((p) => p.isOnline || isLobby).length || 1;
+  const ring = seatedPlayers(roomState);
+  const activePlayersCount = (isLobby ? ring.length : ring.filter((p) => p.isOnline).length) || 1;
   const maxAllowedCards = Math.max(1, Math.floor(52 / activePlayersCount));
 
   const defaultCards = isLobby ? 1 : Math.min(roomState.gameConfig.cardsInRound + 1, maxAllowedCards);
@@ -112,37 +101,18 @@ export function AdminRoundControl({ roomState, onStartGame, onStartBidding, onNe
       )}
 
       <div className="control-section">
-        <span className="control-label">Playing order</span>
+        <span className="control-label">Seated players</span>
         <div className="order-list">
-          {roomState.players.map((player, index) => (
+          {ring.map((player) => (
             <div key={player.playerId} className="order-row">
-              <span className="order-pos">{index + 1}</span>
+              <span className="order-pos">{player.seatIndex + 1}</span>
               <span className="order-name">
                 {player.nickname}
                 {player.playerId === roomState.adminPlayerId ? " · host" : ""}
               </span>
-              <div className="order-actions">
-                <button
-                  type="button"
-                  className="btn-ghost"
-                  onClick={() => onReorder(movePlayerIds(roomState.players, player.playerId, -1))}
-                  disabled={index === 0}
-                  aria-label={`Move ${player.nickname} up`}
-                >
-                  ↑
-                </button>
-                <button
-                  type="button"
-                  className="btn-ghost"
-                  onClick={() => onReorder(movePlayerIds(roomState.players, player.playerId, 1))}
-                  disabled={index === roomState.players.length - 1}
-                  aria-label={`Move ${player.nickname} down`}
-                >
-                  ↓
-                </button>
-              </div>
             </div>
           ))}
+          {ring.length === 0 && <p className="control-hint">Nobody has taken a seat yet.</p>}
         </div>
       </div>
 

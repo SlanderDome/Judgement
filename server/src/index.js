@@ -10,16 +10,23 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const clientDistPath = path.join(__dirname, "../../client/dist");
 
+// Allowed browser origins for CORS. Defaults to "*" (unchanged production
+// behaviour); set CORS_ORIGIN to a comma-separated allowlist to restrict it,
+// e.g. CORS_ORIGIN=http://localhost:5173
+const corsOrigin = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(",").map((entry) => entry.trim()).filter(Boolean)
+  : "*";
+
 const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: "*",
+    origin: corsOrigin,
     methods: ["GET", "POST"]
   }
 });
 
-app.use(cors());
+app.use(cors({ origin: corsOrigin }));
 app.use(express.json());
 
 app.use(express.static(clientDistPath));
