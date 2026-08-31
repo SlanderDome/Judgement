@@ -34,6 +34,11 @@ build/
 .next/
 .nuxt/
 
+# Application source — never ignore, even if a broad "lib/" rule is reintroduced.
+# (client/src/lib/ holds React utilities like seats.js / useCountdown.js.)
+!client/src/lib/
+!client/src/lib/**
+
 # Python
 __pycache__/
 *.py[cod]
