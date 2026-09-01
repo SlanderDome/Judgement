@@ -19,7 +19,12 @@ export function TrickTable({ roomState, dropZoneRef, dropActive, revealEndsAt = 
     currentTrick?.winnerPlayerId ?? liveLeader?.playerId ?? lastTrick?.winnerPlayerId ?? null;
 
   return (
-    <section className="table-stage" aria-label="Played cards table">
+    <section
+      className={`table-stage ${playedCards.length ? "table-stage--active" : "table-stage--empty"} ${
+        isRevealing ? "table-stage--revealing" : ""
+      }`}
+      aria-label="Played cards table"
+    >
       <div className={`table-felt ${dropActive ? "is-drop-active" : ""}`} ref={dropZoneRef}>
         <div className="table-inner">
           <div className="played-card-grid">
@@ -48,7 +53,7 @@ export function TrickTable({ roomState, dropZoneRef, dropActive, revealEndsAt = 
                     isTableCard
                     isWinning={isWinning}
                     rotation={(index - (playedCards.length - 1) / 2) * 7}
-                    delay={index * 0.05}
+                    delay={0}
                   />
                   <span className={`played-by ${isWinning ? "is-winning" : ""}`}>
                     {getPlayerName(roomState.players, play.playerId)}

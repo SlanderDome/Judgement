@@ -195,6 +195,16 @@ export function registerSocketHandlers(io) {
       }
     });
 
+    socket.on("game:toggle_pause", ({ roomId, playerId } = {}) => {
+      try {
+        const room = roomManager.togglePause(roomId, playerId);
+        emitRoomState(io, room);
+        scheduleRoomTimeout(io, roomId);
+      } catch (error) {
+        emitError(socket, error.message, "PAUSE_REJECTED");
+      }
+    });
+
     socket.on("game:reorder_players", ({ roomId, playerId, orderedPlayerIds } = {}) => {
       try {
         const room = roomManager.reorderPlayers(roomId, playerId, orderedPlayerIds);

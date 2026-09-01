@@ -8,10 +8,12 @@ const SUITS = [
   { key: "HEARTS", label: "Hearts", pip: "♥", red: true }
 ];
 
-export function AdminRoundControl({ roomState, onStartGame, onNextRound, onClose }) {
+export function AdminRoundControl({ roomState, onStartGame, onStartBidding, onTogglePause, onNextRound, onClose }) {
   const isLobby = roomState.status === "LOBBY";
   const isSummary = roomState.status === "ROUND_SUMMARY";
   const canConfigure = isLobby || isSummary;
+  const isPreBidding = roomState.status === "PRE_BIDDING";
+  const canPause = !isLobby && !isSummary && roomState.status !== "GAME_OVER";
 
   // Mirror the server ceiling (server/src/game/rules.js MAX_CARDS_PER_ROUND).
   const MAX_CARDS_PER_ROUND = 10;
@@ -49,11 +51,11 @@ export function AdminRoundControl({ roomState, onStartGame, onNextRound, onClose
   const primaryLabel = isLobby ? "Start game" : `Start round ${roomState.gameConfig.roundNumber + 1}`;
 
   return (
-    <div className="overlay-card">
+    <div className="overlay-card admin-card">
       <div className="overlay-head">
         <div>
           <p className="eyebrow">Host controls</p>
-          <h2>{title}</h2>
+          <h2>{canPause ? "Game controls" : title}</h2>
         </div>
         {onClose && (
           <button type="button" className="overlay-close btn-ghost" onClick={onClose} aria-label="Close">
@@ -95,7 +97,8 @@ export function AdminRoundControl({ roomState, onStartGame, onNextRound, onClose
         </>
       )}
 
-      <div className="control-section">
+      {canConfigure && (
+      <div className="control-section admin-players-section">
         <span className="control-label">Seated players</span>
         <div className="order-list">
           {ring.map((player) => (
@@ -110,11 +113,29 @@ export function AdminRoundControl({ roomState, onStartGame, onNextRound, onClose
           {ring.length === 0 && <p className="control-hint">Nobody has taken a seat yet.</p>}
         </div>
       </div>
+      )}
 
       <div className="control-actions">
-        <button type="button" className="btn-primary" onClick={handlePrimary}>
-          {primaryLabel}
-        </button>
+        {canConfigure && (
+          <button type="button" className="btn-primary" onClick={handlePrimary}>
+            {primaryLabel}
+          </button>
+        )}
+        {isPreBidding && (
+          <button type="button" className="btn-ghost" onClick={onStartBidding}>
+            Start bidding now
+          </button>
+        )}
+        {canPause && (
+          <button
+            type="button"
+            className="btn-ghost"
+            onClick={onTogglePause}
+            aria-pressed={roomState.paused === true}
+          >
+            {roomState.paused ? "Resume game" : "Pause game"}
+          </button>
+        )}
         {isSummary && (
           <button type="button" className="btn-danger" onClick={handleEndGame}>
             End game
