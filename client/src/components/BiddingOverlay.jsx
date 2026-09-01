@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { currentTurnPlayer, seatedPlayers } from "../lib/seats.js";
 import { useCountdown } from "../lib/useCountdown.js";
 
@@ -20,6 +20,55 @@ export function BiddingOverlay({ roomState, clientPlayerId, onSubmitBid }) {
   const endsAt = isBidding ? roomState.timer?.endsAt ?? null : null;
   const durationMs = roomState.timer?.durationMs ?? 30000;
   const remainingMs = useCountdown(endsAt);
+
+  // Keyboard: number keys 0–9 submit that bid, exactly like clicking the chip.
+  // Bids above 9 (large rounds) must still be clicked. Skips forbidden / out-of-range.
+  const bidKbRef = useRef({});
+  bidKbRef.current = { roomState, clientPlayerId, onSubmitBid };
+  useEffect(() => {
+    function handleKey(event) {
+      if (event.defaultPrevented || event.repeat || event.metaKey || event.ctrlKey || event.altKey) {
+        return;
+      }
+      const target = event.target;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) {
+        return;
+      }
+      if (!/^[0-9]$/.test(event.key) || document.querySelector(".overlay")) {
+        return;
+      }
+      const { roomState: rs, clientPlayerId: me, onSubmitBid: submit } = bidKbRef.current;
+      if (rs.status !== "BIDDING") {
+        return;
+      }
+      if (currentTurnPlayer(rs)?.playerId !== me) {
+        return;
+      }
+      const bidEndsAt = rs.timer?.endsAt ?? null;
+      if (bidEndsAt != null && bidEndsAt - Date.now() <= 0) {
+        return; // timer expired — auto-bid is taking over
+      }
+      const bid = Number(event.key);
+      const max = rs.gameConfig.cardsInRound;
+      if (bid > max) {
+        return;
+      }
+      const placed = Object.values(rs.currentRound?.bids ?? {});
+      const forbidden =
+        rs.currentRound?.forbiddenBidForFinalPlayer ??
+        (seatedPlayers(rs).length - 1 === placed.length
+          ? max - placed.reduce((sum, value) => sum + value, 0)
+          : null);
+      if (forbidden !== null && bid === forbidden) {
+        return;
+      }
+      event.preventDefault();
+      submit(bid);
+    }
+
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, []);
 
   if (!isBidding || !ready) {
     return null;

@@ -1,6 +1,10 @@
 import { useCountdown } from "../lib/useCountdown.js";
 
-const RADIUS = 18;
+// Geometry matches .seat-timer in styles.css: a 46-unit box whose ring (r=21,
+// centred at 23,23) wraps just outside the 36px avatar with a small gap.
+const VIEWBOX = 46;
+const CENTER = VIEWBOX / 2;
+const RADIUS = 21;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
 export function TurnTimerBar({ endsAt, durationMs = 20000 }) {
@@ -21,12 +25,12 @@ export function TurnTimerBar({ endsAt, durationMs = 20000 }) {
       role="timer"
       aria-label={`${secondsRemaining} seconds remaining`}
     >
-      <svg className="seat-timer-ring" viewBox="0 0 44 44" aria-hidden="true">
-        <circle className="seat-timer-track" cx="22" cy="22" r={RADIUS} />
+      <svg className="seat-timer-ring" viewBox={`0 0 ${VIEWBOX} ${VIEWBOX}`} aria-hidden="true">
+        <circle className="seat-timer-track" cx={CENTER} cy={CENTER} r={RADIUS} />
         <circle
           className="seat-timer-fill"
-          cx="22"
-          cy="22"
+          cx={CENTER}
+          cy={CENTER}
           r={RADIUS}
           strokeDasharray={CIRCUMFERENCE}
           strokeDashoffset={CIRCUMFERENCE * (1 - percentage / 100)}

@@ -5,14 +5,23 @@ export const ROOM_STATUS = {
   PRE_BIDDING: "PRE_BIDDING",
   BIDDING: "BIDDING",
   TRICK_PLAYING: "TRICK_PLAYING",
+  TRICK_COMPLETE: "TRICK_COMPLETE",
   ROUND_SUMMARY: "ROUND_SUMMARY",
   GAME_OVER: "GAME_OVER"
 };
 
 const TURN_TIMEOUT_MS = 20000;
 const BID_TIMEOUT_MS = 30000;
+// After cards are dealt, bidding starts automatically once this countdown ends —
+// no host action required.
+const PRE_BIDDING_TIMEOUT_MS = 30000;
+// The completed trick stays face-up for this long so everyone sees the last card
+// before it clears to the winner.
+const TRICK_REVEAL_MS = 10000;
+// The scoreboard shows for this long, then the next round starts automatically.
+const ROUND_SUMMARY_MS = 15000;
 
-export const SEAT_COUNT = 10;
+export const SEAT_COUNT = 8;
 
 export function createPlayer({ playerId, nickname, socketId, seatIndex = null, isAdmin = false }) {
   return {
@@ -70,7 +79,8 @@ function createEmptyCurrentRound() {
     forbiddenBidForFinalPlayer: null,
     currentTrick: {
       leadSuit: null,
-      cardsPlayed: []
+      cardsPlayed: [],
+      winnerPlayerId: null
     },
     tricksHistory: [],
     lastTrick: null,
@@ -136,7 +146,8 @@ function prepareRound(room) {
   room.status = ROOM_STATUS.PRE_BIDDING;
   room.currentRound = createEmptyCurrentRound();
   room.gameConfig.currentTurnIndex = firstActorIndex(room);
-  room.timer = { endsAt: null, durationMs: null };
+  // Countdown to the automatic bidding start (handleTurnTimeout advances it).
+  room.timer = { endsAt: Date.now() + PRE_BIDDING_TIMEOUT_MS, durationMs: PRE_BIDDING_TIMEOUT_MS };
   dealRound(room);
   room.updatedAt = Date.now();
   return room;
@@ -299,9 +310,10 @@ export function submitBid(room, playerId, bid) {
   const biddingComplete = room.gameConfig.currentTurnIndex === room.gameConfig.dealerIndex;
   if (biddingComplete) {
     room.status = ROOM_STATUS.TRICK_PLAYING;
-    // Trick 1 is led by the seat immediately clockwise of the dealer.
+    // Trick 1 is led by the seat immediately clockwise of the dealer — and that
+    // leader gets the same turn timer / auto-play as every other player.
     room.gameConfig.currentTurnIndex = firstActorIndex(room);
-    room.timer.endsAt = null;
+    room.timer = { endsAt: Date.now() + TURN_TIMEOUT_MS, durationMs: TURN_TIMEOUT_MS };
   } else {
     room.gameConfig.currentTurnIndex = (room.gameConfig.currentTurnIndex + 1) % ringLength(room);
     room.timer.endsAt = Date.now() + BID_TIMEOUT_MS;
@@ -328,7 +340,7 @@ function cardStrength(cardPlayed, leadSuit, trumpSuit) {
   return card.value;
 }
 
-function resolveTrick(room) {
+function trickWinningPlay(room) {
   const { leadSuit, cardsPlayed } = room.currentRound.currentTrick;
   const trumpSuit = room.gameConfig.trumpSuit;
   let winningPlay = cardsPlayed[0];
@@ -339,6 +351,24 @@ function resolveTrick(room) {
       winningPlay = contender;
     }
   }
+
+  return winningPlay;
+}
+
+// The last card has just been played. Freeze the full trick face-up (with the
+// winner marked) and start the reveal countdown; resolveTrick() runs when it ends.
+function completeTrick(room) {
+  const winningPlay = trickWinningPlay(room);
+  room.currentRound.currentTrick.winnerPlayerId = winningPlay.playerId;
+  room.status = ROOM_STATUS.TRICK_COMPLETE;
+  room.timer = { endsAt: Date.now() + TRICK_REVEAL_MS, durationMs: TRICK_REVEAL_MS };
+  room.updatedAt = Date.now();
+  return room;
+}
+
+function resolveTrick(room) {
+  const { leadSuit, cardsPlayed } = room.currentRound.currentTrick;
+  const winningPlay = trickWinningPlay(room);
 
   const winner = room.players.find((player) => player.playerId === winningPlay.playerId);
   if (!winner) {
@@ -378,15 +408,17 @@ function resolveTrick(room) {
       }))
     };
     room.status = ROOM_STATUS.ROUND_SUMMARY;
-    room.timer.endsAt = null;
+    // Scoreboard is shown, then the next round starts automatically.
+    room.timer = { endsAt: Date.now() + ROUND_SUMMARY_MS, durationMs: ROUND_SUMMARY_MS };
   } else {
     room.currentRound.currentTrick = {
       leadSuit: null,
-      cardsPlayed: []
+      cardsPlayed: [],
+      winnerPlayerId: null
     };
+    room.status = ROOM_STATUS.TRICK_PLAYING;
     room.gameConfig.currentTurnIndex = ring.findIndex((player) => player.playerId === winner.playerId);
-    room.timer.endsAt = Date.now() + TURN_TIMEOUT_MS;
-    room.timer.durationMs = TURN_TIMEOUT_MS;
+    room.timer = { endsAt: Date.now() + TURN_TIMEOUT_MS, durationMs: TURN_TIMEOUT_MS };
   }
 
   room.updatedAt = Date.now();
@@ -433,7 +465,7 @@ export function playCard(room, playerId, cardId) {
   const trickComplete = room.currentRound.currentTrick.cardsPlayed.length >= ringLength(room);
 
   if (trickComplete) {
-    return resolveTrick(room);
+    return completeTrick(room);
   }
 
   room.gameConfig.currentTurnIndex = (room.gameConfig.currentTurnIndex + 1) % ringLength(room);
@@ -471,6 +503,21 @@ export function selectLowestRiskCard(room, cards) {
 }
 
 export function handleTurnTimeout(room) {
+  if (room.status === ROOM_STATUS.PRE_BIDDING) {
+    // Countdown finished — start bidding automatically.
+    return startBidding(room);
+  }
+
+  if (room.status === ROOM_STATUS.TRICK_COMPLETE) {
+    // Reveal window over — award the trick and move on.
+    return resolveTrick(room);
+  }
+
+  if (room.status === ROOM_STATUS.ROUND_SUMMARY) {
+    // Scoreboard shown long enough — advance to the next round automatically.
+    return advanceRound(room, {});
+  }
+
   if (room.status === ROOM_STATUS.BIDDING) {
     const currentPlayer = getCurrentPlayer(room);
     if (!currentPlayer) {

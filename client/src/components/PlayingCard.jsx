@@ -1,22 +1,25 @@
+import { memo } from "react";
 import { motion } from "framer-motion";
+import { CARD_BACK, getCardAsset } from "../lib/cards.js";
 
-const SUIT_META = {
-  SPADES: { pip: "♠", label: "Spades", tone: "black" },
-  DIAMONDS: { pip: "♦", label: "Diamonds", tone: "red" },
-  CLUBS: { pip: "♣", label: "Clubs", tone: "black" },
-  HEARTS: { pip: "♥", label: "Hearts", tone: "red" }
+const SUIT_LABEL = {
+  SPADES: "Spades",
+  DIAMONDS: "Diamonds",
+  CLUBS: "Clubs",
+  HEARTS: "Hearts"
 };
 
-const FACE_RANKS = new Set(["J", "Q", "K", "A"]);
-
-export function PlayingCard({
+function PlayingCardComponent({
   card,
   ownerName,
+  faceDown = false,
+  reveal = false,
   delay = 0,
   disabled = false,
   isSelected = false,
   isPlayable = false,
   isTableCard = false,
+  isWinning = false,
   isDraggable = false,
   rotation = 0,
   y = 0,
@@ -27,41 +30,46 @@ export function PlayingCard({
   onDragStart,
   onDragEnd
 }) {
-  const suit = SUIT_META[card.suit] ?? {
-    pip: card.suit?.[0] ?? "?",
-    label: card.suit ?? "Unknown",
-    tone: "black"
-  };
-  const isFace = FACE_RANKS.has(card.label);
+  const src = faceDown ? CARD_BACK : getCardAsset(card);
+  const altText = faceDown
+    ? "Face-down card"
+    : card
+      ? `${card.label} of ${SUIT_LABEL[card.suit] ?? card.suit ?? "Unknown"}`
+      : "Playing card";
 
   return (
     <motion.button
       type="button"
       className={[
         "playing-card",
-        `tone-${suit.tone}`,
         isTableCard ? "table-card" : "hand-card",
-        isFace ? "is-face" : "",
+        faceDown ? "is-face-down" : "",
         isPlayable ? "playable" : "",
-        isSelected ? "selected" : ""
+        isSelected ? "selected" : "",
+        isTableCard && isWinning ? "is-winning" : ""
       ].join(" ")}
       disabled={disabled || isTableCard || !onClick}
       onClick={onClick}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      layoutId={card.id}
-      initial={{
-        opacity: 0,
-        y: isTableCard ? 28 : 80,
-        rotate: isTableCard ? rotation - 8 : rotation,
-        rotateX: isTableCard ? 10 : 0,
-        scale: isTableCard ? 0.92 : 0.82
-      }}
+      layoutId={card?.id}
+      initial={
+        reveal
+          ? { opacity: 0, y: 30, rotate: rotation, rotateX: 0, rotateY: -82, scale: 0.9 }
+          : {
+              opacity: 0,
+              y: isTableCard ? 28 : 80,
+              rotate: isTableCard ? rotation - 8 : rotation,
+              rotateX: isTableCard ? 10 : 0,
+              scale: isTableCard ? 0.92 : 0.82
+            }
+      }
       animate={{
         opacity: 1,
         y: isSelected ? y - 34 : y,
         rotate: isSelected ? 0 : rotation + pointerTilt,
         rotateX: isSelected ? -8 : 0,
+        rotateY: 0,
         scale: isSelected ? 1.14 : 1,
         zIndex: isSelected ? 140 : undefined
       }}
@@ -82,20 +90,16 @@ export function PlayingCard({
       onDragStart={onDragStart}
       onDragEnd={(event, info) => onDragEnd?.(info)}
       transition={{ type: "spring", stiffness: 360, damping: 28, delay }}
-      layout
-      aria-label={`${card.label} of ${suit.label}${ownerName ? ` played by ${ownerName}` : ""}`}
+      aria-label={`${altText}${ownerName ? ` played by ${ownerName}` : ""}`}
     >
-      <span className="card-corner">
-        <strong>{card.label}</strong>
-        <em>{suit.pip}</em>
-      </span>
-      <span className="card-art" aria-hidden="true">
-        {isFace ? card.label : suit.pip}
-      </span>
-      <span className="card-corner card-corner-bottom">
-        <strong>{card.label}</strong>
-        <em>{suit.pip}</em>
-      </span>
+      <img
+        className={`playing-card__art ${faceDown ? "playing-card__art--back" : "playing-card__art--face"}`}
+        src={src}
+        alt=""
+        draggable={false}
+      />
     </motion.button>
   );
 }
+
+export const PlayingCard = memo(PlayingCardComponent);

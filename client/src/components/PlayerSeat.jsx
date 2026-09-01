@@ -1,7 +1,8 @@
+import { memo } from "react";
 import { motion } from "framer-motion";
 import { TurnTimerBar } from "./TurnTimerBar.jsx";
 
-export function PlayerSeat({
+function PlayerSeatComponent({
   player,
   isClient = false,
   isTurn = false,
@@ -37,10 +38,10 @@ export function PlayerSeat({
         isOffline ? "seat--offline" : isDimmed ? "seat--dim" : "",
         isDealer ? "seat--dealer-state" : ""
       ].join(" ")}
-      style={{ "--seat-hue": hue }}
+      style={{ "--seat-hue": hue, zIndex: isTurn ? 7 : undefined }}
       initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ type: "spring", stiffness: 320, damping: 28 }}
+      animate={{ opacity: 1, y: 0, scale: isTurn ? 1.14 : 1 }}
+      transition={{ type: "spring", stiffness: 300, damping: 22 }}
     >
       <div className="seat-avatar-wrap">
         <span className="seat-avatar" aria-hidden="true">
@@ -80,4 +81,4 @@ export function PlayerSeat({
   );
 }
 
-
+export const PlayerSeat = memo(PlayerSeatComponent);

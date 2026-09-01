@@ -44,7 +44,9 @@
 
   --card-w-hand: clamp(76px, 11.5vw, 124px);
   --card-w-table: clamp(64px, 7.5vw, 96px);
-  --card-r: 10px;
+  /* Container corner rounding — close to the deck art's own ~4.5% radius so the
+     clipped white bleed reads as one rounded card edge. */
+  --card-r: clamp(5px, 0.7vw, 9px);
   --card-r-inner: 6px;
 }
 
@@ -206,10 +208,6 @@ input:focus {
   font-weight: 800;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-}
-
-.muted {
-  color: var(--ivory-soft);
 }
 
 /* ---------- Lobby ---------- */
@@ -431,6 +429,14 @@ input:focus {
     inset 0 0 72px rgba(0, 0, 0, 0.34);
 }
 
+.game-layout--trick-complete .table-felt {
+  box-shadow:
+    0 34px 76px rgba(0, 0, 0, 0.52),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 0 0 1px rgba(231, 207, 143, 0.16),
+    inset 0 0 90px rgba(231, 207, 143, 0.08);
+}
+
 .game-layout--round-summary .table-felt {
   filter: saturate(0.94) brightness(0.96);
 }
@@ -518,6 +524,52 @@ input:focus {
   letter-spacing: 0.04em;
 }
 
+/* Room code — click to copy */
+.room-code-btn {
+  min-height: 0;
+  font-weight: 500;
+  letter-spacing: normal;
+  color: var(--ivory-soft);
+  transition: border-color 140ms ease, background-color 140ms ease, color 140ms ease;
+}
+
+.room-code-btn:hover:not(:disabled),
+.room-code-btn:focus-visible {
+  border-color: rgba(231, 207, 143, 0.4);
+  background: rgba(201, 162, 74, 0.12);
+}
+
+.room-code-btn.is-copied {
+  border-color: rgba(231, 207, 143, 0.55);
+  background: rgba(201, 162, 74, 0.16);
+}
+
+.room-code-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.22rem;
+  margin-left: 0.1rem;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ivory-mute);
+  transition: color 140ms ease;
+}
+
+.room-code-btn:hover .room-code-tag,
+.room-code-btn:focus-visible .room-code-tag {
+  color: var(--gold-light);
+}
+
+.room-code-btn.is-copied .room-code-tag {
+  color: var(--gold-light);
+}
+
+.room-code-tag svg {
+  display: block;
+}
+
 .gh-dot {
   color: rgba(246, 239, 225, 0.18);
   user-select: none;
@@ -576,63 +628,6 @@ input:focus {
   font-weight: 800;
 }
 
-/* Table wrap (felt + seats around it) */
-
-.table-wrap {
-  position: relative;
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  perspective: 1600px;
-}
-
-/* Opponent seats (positioned around the table) */
-
-.opponents {
-  position: absolute;
-  inset: 0;
-  z-index: 4;
-  pointer-events: none;
-}
-
-.opponents .seat {
-  pointer-events: auto;
-}
-
-.seat-slot {
-  position: absolute;
-}
-
-.seat-slot--top {
-  left: 50%;
-  top: 6px;
-  transform: translateX(-50%);
-}
-
-.seat-slot--left {
-  left: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-}
-
-.seat-slot--right {
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-}
-
-.seat-slot--top-left {
-  left: 24%;
-  top: 6px;
-  transform: translateX(-50%);
-}
-
-.seat-slot--top-right {
-  right: 24%;
-  top: 6px;
-  transform: translateX(50%);
-}
 
 /* ---------- Player seat ---------- */
 
@@ -698,10 +693,12 @@ input:focus {
 }
 
 .seat-timer {
+  /* Concentric with the 36px avatar: a 46px box centred on the 40px wrap
+     (offset -3px on every side) holds a ring that wraps just outside it. */
   position: absolute;
-  inset: -2px;
-  width: 44px;
-  height: 44px;
+  inset: -3px;
+  width: 46px;
+  height: 46px;
   pointer-events: none;
 }
 
@@ -775,10 +772,6 @@ input:focus {
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-}
-
-.seat--active .seat-status {
-  color: var(--gold-light);
 }
 
 .seat--recent .seat-status {
@@ -871,6 +864,58 @@ input:focus {
   box-shadow: 0 0 0 2px rgba(246, 239, 225, 0.12);
 }
 
+/* Active turn — unmistakable, on every player's board. The whole seat lifts
+   (scale is animated by framer in PlayerSeat) and carries a bright golden
+   border + glow that breathes. Matches the prominence of the bidding timer. */
+.seat.seat--active,
+.poker-table .seat.seat--active {
+  border-color: var(--gold-light);
+  background: linear-gradient(180deg, rgba(231, 207, 143, 0.2), rgba(231, 207, 143, 0.07));
+  box-shadow:
+    0 0 0 2px var(--gold-light),
+    0 0 26px rgba(231, 207, 143, 0.5),
+    0 16px 34px rgba(0, 0, 0, 0.46);
+  animation: seatActivePulse 1.8s ease-in-out infinite;
+}
+
+@keyframes seatActivePulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 2px var(--gold-light),
+      0 0 20px rgba(231, 207, 143, 0.4),
+      0 16px 34px rgba(0, 0, 0, 0.46);
+  }
+  50% {
+    box-shadow:
+      0 0 0 3px var(--gold-light),
+      0 0 34px rgba(231, 207, 143, 0.68),
+      0 16px 34px rgba(0, 0, 0, 0.46);
+  }
+}
+
+.seat--active .seat-status {
+  color: #16110a;
+  background: var(--gold-light);
+  border-radius: 999px;
+  padding: 0.04rem 0.5rem;
+}
+
+/* Higher-contrast countdown ring while it's this player's turn */
+.seat--active .seat-timer-track {
+  stroke: rgba(246, 239, 225, 0.22);
+}
+
+.seat--active .seat-timer-fill {
+  stroke-width: 3.6;
+}
+
+.seat--active .seat-timer-text {
+  font-size: 0.7rem;
+  background: rgba(8, 24, 20, 0.95);
+  box-shadow: 0 0 0 1px rgba(231, 207, 143, 0.4);
+}
+
 .seat--offline {
   opacity: 0.52;
 }
@@ -948,7 +993,7 @@ input:focus {
     0 0 0 1px rgba(231, 207, 143, 0.15);
 }
 
-/* ---------- Circular 10-seat table ---------- */
+/* ---------- Circular 8-seat table ---------- */
 
 /* Mobile-first: a portrait oval that fills the vertical space between the
    header and the hand. Desktop widens it into a landscape oval below. */
@@ -1000,6 +1045,7 @@ input:focus {
 .poker-table__center {
   position: absolute;
   inset: 26% 22%;
+  z-index: 4;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1040,6 +1086,104 @@ input:focus {
   color: var(--gold-light);
 }
 
+.table-lobby-note--dealing {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+  animation: dealingPulse 1.1s ease-in-out infinite;
+}
+
+@keyframes dealingPulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* ---------- Dealing animation: deck + flying cards ---------- */
+
+/* Sizing for the deck / flying / fan card backs (a touch smaller than a
+   played card). Native ratio preserved via aspect-ratio. */
+.table-deck,
+.deal-fly-card,
+.seat-fan {
+  --deck-card-w: clamp(58px, 6.4vw, 88px);
+}
+
+.table-deck {
+  position: absolute;
+  z-index: 2;
+  width: var(--deck-card-w);
+  aspect-ratio: 264 / 360;
+  pointer-events: none;
+}
+
+.table-deck__stack {
+  position: absolute;
+  inset: 0;
+}
+
+.table-deck__card {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: clamp(3px, 0.5vw, 6px);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  transform: translate(calc((var(--i) - 1.5) * 0.9px), calc(var(--i) * -1.7px))
+    rotate(calc((var(--i) - 1.5) * 1.15deg));
+}
+
+.deal-fly-card {
+  position: absolute;
+  z-index: 8;
+  width: var(--deck-card-w);
+  aspect-ratio: 264 / 360;
+  border-radius: clamp(3px, 0.5vw, 6px);
+  pointer-events: none;
+  /* box-shadow, not filter: drop-shadow — these are animated every frame and a
+     rectangular box-shadow is far cheaper for the compositor. */
+  box-shadow: 0 8px 12px rgba(0, 0, 0, 0.5);
+}
+
+/* Opponent's face-down fan, tucked below their seat */
+.seat-fan {
+  --deck-card-w: clamp(40px, 4.4vw, 58px);
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translate(-50%, -0.5rem);
+  width: 0;
+  height: calc(var(--deck-card-w) * 360 / 264);
+  z-index: 4;
+  pointer-events: none;
+}
+
+.seat-fan__card {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: var(--deck-card-w);
+  aspect-ratio: 264 / 360;
+  border-radius: clamp(3px, 0.5vw, 6px);
+  transform-origin: bottom center;
+  transform: translateX(-50%)
+    translateX(calc((var(--i) - (var(--n) - 1) / 2) * clamp(5px, 0.8vw, 11px)))
+    rotate(calc((var(--i) - (var(--n) - 1) / 2) * 6deg));
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.35);
+}
+
+.self-area.is-dealing {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
 .table-seat {
   position: absolute;
   left: calc(50% + var(--seat-x, 0) * var(--seat-radius-x));
@@ -1055,11 +1199,11 @@ input:focus {
   min-width: 82px;
   max-width: 108px;
   padding: 0.26rem 0.44rem;
-  background: linear-gradient(180deg, rgba(9, 20, 16, 0.86), rgba(9, 20, 16, 0.68));
+  /* Opaque fill instead of a translucent panel + backdrop-filter blur — the blur
+     forced the compositor to re-sample the felt behind every seat each frame. */
+  background: linear-gradient(180deg, #0c1712, #0a1410);
   border-color: rgba(246, 239, 225, 0.16);
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.42);
-  -webkit-backdrop-filter: blur(2px);
-  backdrop-filter: blur(2px);
 }
 
 /* Empty seat — clickable "SIT" in the lobby */
@@ -1249,46 +1393,79 @@ input:focus {
   background: rgba(246, 239, 225, 0.05);
 }
 
+/* Trick reveal — the completed trick is held face-up before it clears */
+.trick-reveal {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.4rem 0.85rem 0.5rem;
+  border: 1px solid rgba(231, 207, 143, 0.34);
+  border-radius: 16px;
+  background: rgba(231, 207, 143, 0.1);
+  color: var(--ivory);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.trick-reveal strong {
+  color: var(--gold-light);
+}
+
+.trick-reveal-count {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ivory-mute);
+}
+
 /* ---------- Playing card ---------- */
 
 .playing-card {
   position: relative;
   width: var(--card-w-hand);
-  aspect-ratio: 5 / 7;
+  /* Native ratio of the deck SVGs (viewBox -132 -180 264 360). Never change
+     this without the artwork changing — the SVGs use preserveAspectRatio="none"
+     so a mismatched box would stretch them. */
+  aspect-ratio: 264 / 360;
   min-height: 0;
   flex: 0 0 auto;
-  border: 1px solid rgba(20, 18, 14, 0.4);
+  border: 0;
   border-radius: var(--card-r);
   padding: 0;
-  color: var(--ink);
-  background:
-    radial-gradient(130% 130% at 30% 18%, #ffffff 0%, #f6f0e3 58%, #ece1cc 100%);
+  background: #fdfcf7;
   box-shadow: var(--shadow-card);
   cursor: pointer;
   isolation: isolate;
   overflow: hidden;
-  --corner-rank: clamp(0.95rem, 1.5vw, 1.5rem);
-  --corner-pip: clamp(0.85rem, 1.3vw, 1.3rem);
 }
 
-.playing-card::after {
-  content: "";
-  position: absolute;
-  inset: 0;
+/* The card art fills the container. Radius / shadow / hover live on the
+   container above, not here. */
+.playing-card__art {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
   border-radius: inherit;
   pointer-events: none;
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.22), transparent 24%, transparent 70%, rgba(0, 0, 0, 0.12));
-  opacity: 0.9;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
-.playing-card::before {
-  content: "";
-  position: absolute;
-  inset: 5px;
-  border: 1px solid rgba(23, 22, 16, 0.1);
-  border-radius: var(--card-r-inner);
-  pointer-events: none;
-  z-index: 1;
+/* The face SVGs draw the card inside a viewBox with ~4.7% / 3.5% dead margin
+   around a black-bordered rect. Scale that margin out so the printed border sits
+   flush at the card's edge instead of floating as an inset line.
+   264/239 = 1.1046 wide, 360/335 = 1.0746 tall. overflow:hidden clips the rest. */
+.playing-card__art--face {
+  transform: scale(1.1046, 1.0746);
+}
+
+/* The back ships pre-cropped to the card rect — no transform needed. */
+.playing-card__art--back {
+  transform: none;
 }
 
 .playing-card:disabled {
@@ -1321,16 +1498,49 @@ input:focus {
     inset 0 1px 0 rgba(255, 255, 255, 0.5);
 }
 
-.playing-card.hand-card::before {
-  inset: 4px;
-  border-color: rgba(23, 22, 16, 0.08);
-}
-
 .playing-card.table-card {
+  width: var(--card-w-table);
   box-shadow:
     0 14px 22px rgba(0, 0, 0, 0.28),
     0 2px 4px rgba(0, 0, 0, 0.18),
     inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  transition: box-shadow 220ms ease;
+}
+
+/* The card currently winning the trick — a crisp contrasting golden line hugging
+   the border, plus a soft outer glow and a slow breathing pulse. */
+.playing-card.table-card.is-winning {
+  box-shadow:
+    0 18px 28px rgba(0, 0, 0, 0.32),
+    0 0 0 2px var(--gold-light),
+    0 0 0 4px rgba(231, 207, 143, 0.28),
+    0 0 22px rgba(231, 207, 143, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  animation: winningCardPulse 1.9s ease-in-out infinite;
+}
+
+@keyframes winningCardPulse {
+  0%,
+  100% {
+    box-shadow:
+      0 18px 28px rgba(0, 0, 0, 0.32),
+      0 0 0 2px var(--gold-light),
+      0 0 0 4px rgba(231, 207, 143, 0.22),
+      0 0 18px rgba(231, 207, 143, 0.36),
+      inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  }
+  50% {
+    box-shadow:
+      0 20px 32px rgba(0, 0, 0, 0.34),
+      0 0 0 2px var(--gold-light),
+      0 0 0 6px rgba(231, 207, 143, 0.32),
+      0 0 30px rgba(231, 207, 143, 0.58),
+      inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  }
+}
+
+.played-by.is-winning {
+  color: var(--gold-light);
 }
 
 .playing-card.playable:hover {
@@ -1339,71 +1549,6 @@ input:focus {
     0 0 0 2px rgba(231, 207, 143, 0.48),
     0 0 0 1px rgba(255, 255, 255, 0.12),
     inset 0 1px 0 rgba(255, 255, 255, 0.5);
-}
-
-.playing-card.selected::before {
-  border-color: rgba(231, 207, 143, 0.36);
-}
-
-.playing-card.table-card {
-  width: var(--card-w-table);
-}
-
-.tone-red {
-  color: var(--red);
-}
-
-.tone-black {
-  color: var(--ink);
-}
-
-.card-corner {
-  position: absolute;
-  top: 6px;
-  left: 8px;
-  z-index: 2;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  line-height: 0.95;
-}
-
-.card-corner strong {
-  font-family: var(--font-display);
-  font-size: var(--corner-rank);
-  font-weight: 800;
-  letter-spacing: 0.01em;
-}
-
-.card-corner em {
-  font-style: normal;
-  font-size: var(--corner-pip);
-  line-height: 1;
-}
-
-.card-corner-bottom {
-  top: auto;
-  left: auto;
-  right: 8px;
-  bottom: 6px;
-  transform: rotate(180deg);
-}
-
-.card-art {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  font-family: var(--font-display);
-  font-size: clamp(2rem, 5vw, 4rem);
-  line-height: 1;
-  opacity: 0.2;
-  z-index: 0;
-}
-
-/* Face cards show their rank in the centre; number cards show the pip */
-.playing-card.is-face .card-art {
-  opacity: 0.24;
 }
 
 /* ---------- Player hand ---------- */
@@ -1415,6 +1560,15 @@ input:focus {
   align-items: center;
   gap: 4px;
   padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.self-area.is-dragging {
+  position: relative;
+  z-index: 20;
+}
+
+.self-area.is-dragging .fan-hand {
+  overflow: visible;
 }
 
 .hand {
@@ -1758,18 +1912,6 @@ input:focus {
   white-space: nowrap;
 }
 
-.order-actions {
-  display: flex;
-  gap: 0.3rem;
-}
-
-.order-actions button {
-  min-height: 44px;
-  padding: 0.2rem 0.55rem;
-  font-size: 0.85rem;
-  line-height: 1;
-}
-
 /* Scoreboard */
 
 .score-list {
@@ -1892,73 +2034,6 @@ input:focus {
   margin-top: 1.25rem;
 }
 
-/* Timer (on active seat) */
-
-.seat-timer {
-  position: absolute;
-  top: -8px;
-  left: -8px;
-  width: 32px;
-  height: 32px;
-  display: grid;
-  place-items: center;
-  pointer-events: none;
-}
-
-.seat-timer-ring {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  transform: rotate(-90deg);
-}
-
-.seat-timer-track {
-  fill: none;
-  stroke: rgba(8, 24, 20, 0.6);
-  stroke-width: 3;
-}
-
-.seat-timer-fill {
-  fill: none;
-  stroke: var(--gold-light);
-  stroke-width: 3;
-  stroke-linecap: round;
-  transition: stroke-dashoffset 250ms linear;
-}
-
-.seat-timer-text {
-  position: relative;
-  font-size: 0.7rem;
-  font-weight: 800;
-  color: var(--gold-light);
-}
-
-/* Trump */
-
-.trump {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.35rem;
-  font-size: 0.82rem;
-  font-weight: 700;
-}
-
-.trump-label {
-  color: var(--ivory-mute);
-}
-
-.trump-suit {
-  font-size: 1.05rem;
-  line-height: 1;
-  color: var(--gold-light);
-}
-
-.trump.is-red .trump-suit {
-  color: #e9a3a8;
-}
-
-
 /* Error banner */
 
 .error-banner {
@@ -1969,35 +2044,6 @@ input:focus {
   color: #ffd7da;
   padding: 0.7rem 0.9rem;
   font-weight: 700;
-}
-
-/* Misc */
-
-.room-code {
-  font-family: var(--font-display);
-  letter-spacing: 0.1em;
-  font-weight: 800;
-  color: var(--gold-light);
-}
-
-.meta-row {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.self-row {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  justify-content: space-between;
-}
-
-.hand-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
 }
 
 /* ---------- Responsive ---------- */
@@ -2038,24 +2084,6 @@ input:focus {
     min-height: 110px;
   }
 
-  /* Opponents collapse into a compact row above the felt */
-  .opponents {
-    position: static;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-    padding: 2px 0 10px;
-    pointer-events: auto;
-  }
-
-  .opponents .seat,
-  .seat-slot {
-    position: static;
-    transform: none;
-  }
-
   .seat {
     flex-direction: row;
     gap: 0.5rem;
@@ -2068,6 +2096,14 @@ input:focus {
     width: 30px;
     height: 30px;
     font-size: 0.68rem;
+  }
+
+  /* keep the countdown ring snug around the smaller (30px) mobile avatar:
+     a 34px box centred on the 40px wrap (offset +3px on every side) */
+  .seat-timer {
+    inset: 3px;
+    width: 34px;
+    height: 34px;
   }
 }
 
@@ -2223,6 +2259,24 @@ input:focus {
     font-size: 0.86rem;
   }
 
+  /* On desktop the header is plain text — give the copy button its own hit area */
+  .room-code-btn {
+    padding: 0.14rem 0.4rem;
+    margin: -0.14rem -0.2rem;
+    border-radius: 8px;
+  }
+
+  .room-code-btn:hover:not(:disabled),
+  .room-code-btn:focus-visible {
+    background: rgba(201, 162, 74, 0.12);
+    border-color: transparent;
+  }
+
+  .room-code-btn.is-copied {
+    background: rgba(201, 162, 74, 0.16);
+    border-color: transparent;
+  }
+
   .trump-label {
     font-size: 0.62rem;
   }
@@ -2295,10 +2349,6 @@ input:focus {
 
   .played-card-grid {
     min-height: clamp(140px, 20vh, 220px);
-  }
-
-  .opponents {
-    inset: 0;
   }
 
   .self-area {

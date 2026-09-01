@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { PlayingCard } from "./PlayingCard.jsx";
 
 const SUIT_PIPS = {
@@ -9,7 +9,7 @@ const SUIT_PIPS = {
   HEARTS: "♥"
 };
 
-export function PlayingHand({ cards, isMyTurn, legalCardIds, onPlayCard, dropZoneRef, onDragStateChange }) {
+export function PlayingHand({ cards, isMyTurn, legalCardIds, onPlayCard, dropZoneRef, onDragStateChange, revealDeal = false }) {
   const [selectedCardId, setSelectedCardId] = useState(null);
   const [hoveredCardId, setHoveredCardId] = useState(null);
   const [pointerTiltById, setPointerTiltById] = useState({});
@@ -83,6 +83,47 @@ export function PlayingHand({ cards, isMyTurn, legalCardIds, onPlayCard, dropZon
     }
   }
 
+  // Keyboard: number keys play the Nth card, left-to-right. 1–9 map to the first
+  // nine cards; 0 maps to the tenth (rightmost) card in a 10-card round. Only
+  // when it's your turn to play and the round has 10 cards or fewer.
+  // Equivalent to clicking that card and confirming, or dragging it to the table.
+  const playKbRef = useRef({});
+  playKbRef.current = { isMyTurn, legalCardIds, onPlayCard, cards };
+  useEffect(() => {
+    function handleKey(event) {
+      if (event.defaultPrevented || event.repeat || event.metaKey || event.ctrlKey || event.altKey) {
+        return;
+      }
+      const target = event.target;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) {
+        return;
+      }
+      if (document.querySelector(".overlay")) {
+        return; // a modal / scoreboard is open
+      }
+      const state = playKbRef.current;
+      if (!state.isMyTurn || !state.onPlayCard || state.cards.length === 0 || state.cards.length > 10) {
+        return;
+      }
+      if (!/^[0-9]$/.test(event.key)) {
+        return;
+      }
+      const key = Number(event.key);
+      // 1–9 → index 0–8; 0 → index 9 (the tenth card).
+      const index = key === 0 ? 9 : key - 1;
+      const card = state.cards[index];
+      if (!card || !state.legalCardIds.has(card.id)) {
+        return;
+      }
+      event.preventDefault();
+      setSelectedCardId(null);
+      state.onPlayCard(card.id);
+    }
+
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, []);
+
   // Measure the fan so card overlap adapts to card count and viewport width,
   // while strictly capping overlap at 48% so the rank & suit corner is ALWAYS 100% visible.
   useLayoutEffect(() => {
@@ -145,7 +186,8 @@ export function PlayingHand({ cards, isMyTurn, legalCardIds, onPlayCard, dropZon
               >
                 <PlayingCard
                   card={card}
-                  delay={index * 0.04}
+                  delay={revealDeal ? index * 0.07 : index * 0.04}
+                  reveal={revealDeal}
                   disabled={!playable}
                   isPlayable={playable}
                   isSelected={isSelected}

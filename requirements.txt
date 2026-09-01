@@ -1,0 +1,17 @@
+# Judgement Online dependency manifest
+# This is a Node.js project; install with `npm install`.
+
+# Server dependencies
+cors@^2.8.5
+express@^4.21.2
+socket.io@^4.8.1
+
+# Client dependencies
+framer-motion@^13.1.1
+react@^18.3.1
+react-dom@^18.3.1
+socket.io-client@^4.8.1
+
+# Client dev dependencies
+@vitejs/plugin-react@^4.3.4
+vite@^8.2.2
