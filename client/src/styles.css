@@ -1562,6 +1562,15 @@ input:focus {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+.self-area.is-dragging {
+  position: relative;
+  z-index: 20;
+}
+
+.self-area.is-dragging .fan-hand {
+  overflow: visible;
+}
+
 .hand {
   display: flex;
   flex-direction: column;

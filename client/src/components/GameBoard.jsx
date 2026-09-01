@@ -265,7 +265,7 @@ export function GameBoard({
       )}
 
       {clientPlayer && clientSeated && !isLobby && (
-        <div className={`self-area ${isDealing ? "is-dealing" : ""}`}>
+       <div className={`self-area ${isDealing ? "is-dealing" : ""} ${isDragging ? "is-dragging" : ""}`}>
           <BiddingOverlay roomState={roomState} clientPlayerId={clientPlayerId} onSubmitBid={onSubmitBid} />
           <PlayingHand
             key={revealKey}
