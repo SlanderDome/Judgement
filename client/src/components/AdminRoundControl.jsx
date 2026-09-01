@@ -8,15 +8,16 @@ const SUITS = [
   { key: "HEARTS", label: "Hearts", pip: "♥", red: true }
 ];
 
-export function AdminRoundControl({ roomState, onStartGame, onStartBidding, onNextRound, onClose }) {
+export function AdminRoundControl({ roomState, onStartGame, onNextRound, onClose }) {
   const isLobby = roomState.status === "LOBBY";
-  const isPreBidding = roomState.status === "PRE_BIDDING";
   const isSummary = roomState.status === "ROUND_SUMMARY";
   const canConfigure = isLobby || isSummary;
 
+  // Mirror the server ceiling (server/src/game/rules.js MAX_CARDS_PER_ROUND).
+  const MAX_CARDS_PER_ROUND = 10;
   const ring = seatedPlayers(roomState);
   const activePlayersCount = (isLobby ? ring.length : ring.filter((p) => p.isOnline).length) || 1;
-  const maxAllowedCards = Math.max(1, Math.floor(52 / activePlayersCount));
+  const maxAllowedCards = Math.max(1, Math.min(MAX_CARDS_PER_ROUND, Math.floor(52 / activePlayersCount)));
 
   const defaultCards = isLobby ? 1 : Math.min(roomState.gameConfig.cardsInRound + 1, maxAllowedCards);
   const [cardsInRound, setCardsInRound] = useState(defaultCards);
@@ -33,8 +34,6 @@ export function AdminRoundControl({ roomState, onStartGame, onStartBidding, onNe
   function handlePrimary() {
     if (isLobby) {
       onStartGame({ cardsInRound, trumpSuit: selectedSuit });
-    } else if (isPreBidding) {
-      onStartBidding();
     } else {
       onNextRound({ cardsInRound, trumpSuit: selectedSuit });
     }
@@ -46,12 +45,8 @@ export function AdminRoundControl({ roomState, onStartGame, onStartBidding, onNe
     onClose?.();
   }
 
-  const title = isLobby ? "Start the first round" : isPreBidding ? "Bidding" : "Configure next round";
-  const primaryLabel = isLobby
-    ? "Start game"
-    : isPreBidding
-      ? "Start bidding"
-      : `Start round ${roomState.gameConfig.roundNumber + 1}`;
+  const title = isLobby ? "Start the first round" : "Configure next round";
+  const primaryLabel = isLobby ? "Start game" : `Start round ${roomState.gameConfig.roundNumber + 1}`;
 
   return (
     <div className="overlay-card">

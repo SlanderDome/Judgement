@@ -1,15 +1,13 @@
 import { PlayerSeat } from "./PlayerSeat.jsx";
-import { SEAT_COUNT, seatedPlayers } from "../lib/seats.js";
+import { SeatCardFan } from "./SeatCardFan.jsx";
+import { TableDeck } from "./TableDeck.jsx";
+import { SEAT_COUNT, isRoundActive, seatDisplaySlot, seatUnitVector, seatedPlayers } from "../lib/seats.js";
 
-// Seat i sits on the table's perimeter, seat 0 at top-centre, going clockwise.
-// We emit a unit vector; the CSS multiplies it by the table's --seat-radius-*,
-// so the ring can be re-proportioned per breakpoint without touching JS.
+// CSS multiplies this unit vector by the table's --seat-radius-*, so the ring
+// re-proportions per breakpoint without touching JS.
 function seatVars(index, total) {
-  const angle = -Math.PI / 2 + (index / total) * Math.PI * 2;
-  return {
-    "--seat-x": Math.cos(angle).toFixed(4),
-    "--seat-y": Math.sin(angle).toFixed(4)
-  };
+  const { x, y } = seatUnitVector(index, total);
+  return { "--seat-x": x.toFixed(4), "--seat-y": y.toFixed(4) };
 }
 
 export function CircularTable({
@@ -22,34 +20,56 @@ export function CircularTable({
   recentlyActedPlayerId,
   timerEndsAt,
   timerDurationMs,
+  dealPhase = "idle",
   onTakeSeat,
   centerSlot
 }) {
   const total = roomState.seatCount ?? SEAT_COUNT;
-  const bySeat = new Map(seatedPlayers(roomState).map((player) => [player.seatIndex, player]));
+  const ring = seatedPlayers(roomState);
+  const bySeat = new Map(ring.map((player) => [player.seatIndex, player]));
   const seats = Array.from({ length: total }, (_value, index) => index);
+  const roundActive = isRoundActive(roomState.status);
+  const dealing = dealPhase === "dealing";
+  // Spin the ring so the viewer's own seat sits bottom-centre. Spectators keep
+  // the raw ring order.
+  const viewerSeat = ring.find((player) => player.playerId === clientPlayerId)?.seatIndex;
 
   return (
     <div className="poker-table" role="group" aria-label="Table seats">
       <div className="poker-table__felt" aria-hidden="true" />
       <div className="poker-table__center">{centerSlot}</div>
 
+      <TableDeck roomState={roomState} dealPhase={dealPhase} total={total} viewerSeat={viewerSeat} />
+
       {seats.map((seatIndex) => {
         const occupant = bySeat.get(seatIndex);
+        const showFan =
+          occupant &&
+          roundActive &&
+          !dealing &&
+          occupant.playerId !== clientPlayerId &&
+          (occupant.handCount ?? 0) > 0;
 
         return (
-          <div className="table-seat" key={seatIndex} style={seatVars(seatIndex, total)}>
+          <div
+            className="table-seat"
+            key={seatIndex}
+            style={seatVars(seatDisplaySlot(seatIndex, viewerSeat, total), total)}
+          >
             {occupant ? (
-              <PlayerSeat
-                player={occupant}
-                isClient={occupant.playerId === clientPlayerId}
-                isTurn={occupant.playerId === currentTurnPlayerId}
-                isDealer={occupant.playerId === dealerPlayerId}
-                isRecentlyActed={occupant.playerId === recentlyActedPlayerId}
-                isDimmed={!occupant.isOnline}
-                timerEndsAt={occupant.playerId === currentTurnPlayerId ? timerEndsAt : null}
-                timerDurationMs={timerDurationMs}
-              />
+              <>
+                {showFan && <SeatCardFan count={occupant.handCount} />}
+                <PlayerSeat
+                  player={occupant}
+                  isClient={occupant.playerId === clientPlayerId}
+                  isTurn={occupant.playerId === currentTurnPlayerId}
+                  isDealer={occupant.playerId === dealerPlayerId}
+                  isRecentlyActed={occupant.playerId === recentlyActedPlayerId}
+                  isDimmed={!occupant.isOnline}
+                  timerEndsAt={occupant.playerId === currentTurnPlayerId ? timerEndsAt : null}
+                  timerDurationMs={timerDurationMs}
+                />
+              </>
             ) : canSit ? (
               <button
                 type="button"

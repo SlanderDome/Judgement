@@ -37,8 +37,12 @@ export function shuffleDeck(deck) {
   return copy;
 }
 
+// Hard ceiling on hand size regardless of how few players are seated — keeps
+// 2-player games from running 26-card rounds.
+export const MAX_CARDS_PER_ROUND = 10;
+
 export function getMaxCardsForPlayers(playerCount) {
-  return Math.max(1, Math.floor(52 / Math.max(1, playerCount)));
+  return Math.max(1, Math.min(MAX_CARDS_PER_ROUND, Math.floor(52 / Math.max(1, playerCount))));
 }
 
 export function getTrumpSuit(roundNumber) {

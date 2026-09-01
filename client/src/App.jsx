@@ -27,7 +27,6 @@ export default function App() {
           onStartGame={actions.startGame}
           onSubmitBid={actions.submitBid}
           onPlayCard={actions.playCard}
-          onStartBidding={actions.startBidding}
           onTakeSeat={actions.takeSeat}
           onNextRound={actions.nextRound}
           onRematch={actions.rematch}
