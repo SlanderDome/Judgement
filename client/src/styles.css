@@ -121,7 +121,7 @@ button:disabled {
 
 button:focus-visible,
 input:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--ivory);
   outline-offset: 2px;
 }
 
@@ -437,6 +437,40 @@ input:focus {
     inset 0 0 90px rgba(231, 207, 143, 0.08);
 }
 
+/* Each phase gets one quiet compositional cue. The cards and current decision
+   remain the only high-contrast elements. */
+.game-layout--dealing .table-felt {
+  filter: saturate(1.08);
+}
+
+.game-layout--pre-bidding .table-lobby-note,
+.game-layout--dealing .table-lobby-note {
+  font-family: var(--font-display);
+}
+
+.game-layout--pre-bidding .self-area,
+.game-layout--dealing .self-area {
+  opacity: 0.72;
+}
+
+.game-layout--bidding .table-stage {
+  opacity: 0.78;
+}
+
+.game-layout--trick-playing .table-stage--active {
+  transform: translateY(-2px);
+}
+
+.game-layout--trick-complete .table-stage--revealing {
+  transform: translateY(-2px);
+}
+
+.game-layout--round-summary .self-area,
+.game-layout--game-over .self-area {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
 .game-layout--round-summary .table-felt {
   filter: saturate(0.94) brightness(0.96);
 }
@@ -456,6 +490,30 @@ input:focus {
   -webkit-backdrop-filter: blur(14px);
   font-size: 0.84rem;
   color: var(--ivory-soft);
+}
+
+.game-header-top,
+.game-header-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  width: 100%;
+}
+
+.game-header-round {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.room-mark {
+  color: var(--ivory);
+  font-family: var(--font-wordmark);
+  font-size: 0.92rem;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
 }
 
 .game-header-meta,
@@ -515,6 +573,11 @@ input:focus {
 .gh-state--round-complete {
   border-color: rgba(231, 207, 143, 0.26);
   background: rgba(231, 207, 143, 0.08);
+}
+
+.gh-state--paused {
+  border-color: rgba(246, 239, 225, 0.24);
+  background: rgba(246, 239, 225, 0.08);
 }
 
 .gh-room .room-code {
@@ -665,17 +728,6 @@ input:focus {
   height: 40px;
 }
 
-.seat-avatar-wrap::before {
-  content: "";
-  position: absolute;
-  inset: -6px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(201, 162, 74, 0.18), transparent 64%);
-  opacity: 0;
-  transition: opacity 180ms ease, transform 180ms ease;
-  transform: scale(0.82);
-}
-
 .seat-avatar {
   display: grid;
   place-items: center;
@@ -766,16 +818,11 @@ input:focus {
 }
 
 .seat-status {
-  min-height: 1rem;
   color: var(--ivory-mute);
   font-size: 0.66rem;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-}
-
-.seat--recent .seat-status {
-  color: #f4b860;
 }
 
 .seat--offline .seat-status {
@@ -795,33 +842,21 @@ input:focus {
   white-space: nowrap;
 }
 
-.seat-name .seat-you {
-  font-style: normal;
+.seat-you {
   font-size: 0.66rem;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--gold-light);
-}
-
-.seat-cards {
-  font-size: 0.72rem;
   color: var(--ivory-soft);
 }
 
 .seat-bid-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.2rem;
+  display: block;
   font-size: 0.7rem;
-  font-weight: 800;
-  color: var(--gold-light);
-  background: rgba(201, 162, 74, 0.16);
-  border: 1px solid rgba(201, 162, 74, 0.35);
-  border-radius: 999px;
-  padding: 0.08rem 0.45rem;
+  font-weight: 700;
+  color: var(--ivory-soft);
   white-space: nowrap;
-  line-height: 1.2;
+  line-height: 1.35;
 }
 
 .seat-dealer {
@@ -839,23 +874,9 @@ input:focus {
   font-weight: 800;
 }
 
-.seat--active .seat-avatar,
-.seat--recent .seat-avatar,
-.seat--dealer-state .seat-avatar {
-  animation: seat-turn-pulse 2.2s ease-in-out infinite;
-}
-
-.seat--active .seat-avatar-wrap::before,
-.seat--recent .seat-avatar-wrap::before,
-.seat--dealer-state .seat-avatar-wrap::before {
-  opacity: 1;
-  transform: scale(1);
-}
-
 .seat--recent .seat-avatar {
   box-shadow:
-    0 0 0 2px rgba(231, 207, 143, 0.72),
-    0 0 16px rgba(231, 207, 143, 0.18),
+    0 0 0 1px rgba(246, 239, 225, 0.34),
     inset 0 -5px 10px rgba(0, 0, 0, 0.16),
     inset 0 2px 5px rgba(255, 255, 255, 0.25);
 }
@@ -864,41 +885,19 @@ input:focus {
   box-shadow: 0 0 0 2px rgba(246, 239, 225, 0.12);
 }
 
-/* Active turn — unmistakable, on every player's board. The whole seat lifts
-   (scale is animated by framer in PlayerSeat) and carries a bright golden
-   border + glow that breathes. Matches the prominence of the bidding timer. */
+/* Gold is reserved for the player who can act now. Keep the treatment crisp;
+   movement and glow would compete with the playable cards and action panel. */
 .seat.seat--active,
 .poker-table .seat.seat--active {
   border-color: var(--gold-light);
-  background: linear-gradient(180deg, rgba(231, 207, 143, 0.2), rgba(231, 207, 143, 0.07));
+  background: linear-gradient(180deg, rgba(231, 207, 143, 0.14), rgba(231, 207, 143, 0.045));
   box-shadow:
-    0 0 0 2px var(--gold-light),
-    0 0 26px rgba(231, 207, 143, 0.5),
-    0 16px 34px rgba(0, 0, 0, 0.46);
-  animation: seatActivePulse 1.8s ease-in-out infinite;
-}
-
-@keyframes seatActivePulse {
-  0%,
-  100% {
-    box-shadow:
-      0 0 0 2px var(--gold-light),
-      0 0 20px rgba(231, 207, 143, 0.4),
-      0 16px 34px rgba(0, 0, 0, 0.46);
-  }
-  50% {
-    box-shadow:
-      0 0 0 3px var(--gold-light),
-      0 0 34px rgba(231, 207, 143, 0.68),
-      0 16px 34px rgba(0, 0, 0, 0.46);
-  }
+    0 0 0 1px var(--gold-light),
+    0 12px 26px rgba(0, 0, 0, 0.42);
 }
 
 .seat--active .seat-status {
-  color: #16110a;
-  background: var(--gold-light);
-  border-radius: 999px;
-  padding: 0.04rem 0.5rem;
+  color: var(--gold-light);
 }
 
 /* Higher-contrast countdown ring while it's this player's turn */
@@ -913,7 +912,6 @@ input:focus {
 .seat--active .seat-timer-text {
   font-size: 0.7rem;
   background: rgba(8, 24, 20, 0.95);
-  box-shadow: 0 0 0 1px rgba(231, 207, 143, 0.4);
 }
 
 .seat--offline {
@@ -926,16 +924,6 @@ input:focus {
 
 .seat--dim {
   opacity: 0.6;
-}
-
-@keyframes seat-turn-pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 2px var(--gold-light), 0 0 10px rgba(201, 162, 74, 0.18), inset 0 -5px 10px rgba(0, 0, 0, 0.16);
-  }
-  50% {
-    box-shadow: 0 0 0 2px var(--gold-light), 0 0 22px rgba(201, 162, 74, 0.42), inset 0 -5px 10px rgba(0, 0, 0, 0.16);
-  }
 }
 
 /* ---------- Felt table ---------- */
@@ -991,6 +979,21 @@ input:focus {
     inset 0 0 72px rgba(0, 0, 0, 0.34),
     0 30px 70px rgba(0, 0, 0, 0.48),
     0 0 0 1px rgba(231, 207, 143, 0.15);
+}
+
+.table-stage--active .table-inner {
+  /* Define the trick with space and shadow rather than another UI box. */
+  background: radial-gradient(ellipse at center, rgba(2, 20, 14, 0.16), transparent 66%);
+}
+
+.table-stage--empty .table-inner {
+  min-height: 96px;
+}
+
+.table-stage--active .table-inner {
+  /* A soft pool of space makes the center read as the current trick without
+     introducing another panel or border. */
+  background: radial-gradient(ellipse at center, rgba(2, 20, 14, 0.16), transparent 66%);
 }
 
 /* ---------- Circular 8-seat table ---------- */
@@ -1084,6 +1087,15 @@ input:focus {
   font-family: var(--font-display);
   font-size: 1.4rem;
   color: var(--gold-light);
+}
+
+.table-lobby-note__title {
+  display: block;
+  margin-bottom: 0.15rem;
+  color: var(--ivory);
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 700;
 }
 
 .table-lobby-note--dealing {
@@ -1487,7 +1499,7 @@ input:focus {
 }
 
 .playing-card.selected {
-  box-shadow: var(--shadow-card), 0 0 0 3px var(--gold), 0 20px 38px rgba(201, 162, 74, 0.26);
+  box-shadow: var(--shadow-card), 0 0 0 2px var(--gold-light), 0 18px 30px rgba(0, 0, 0, 0.34);
 }
 
 .playing-card.hand-card {
@@ -1507,36 +1519,13 @@ input:focus {
   transition: box-shadow 220ms ease;
 }
 
-/* The card currently winning the trick — a crisp contrasting golden line hugging
-   the border, plus a soft outer glow and a slow breathing pulse. */
+/* The winning card gets one crisp edge. Static information should not pulse. */
 .playing-card.table-card.is-winning {
   box-shadow:
     0 18px 28px rgba(0, 0, 0, 0.32),
     0 0 0 2px var(--gold-light),
-    0 0 0 4px rgba(231, 207, 143, 0.28),
-    0 0 22px rgba(231, 207, 143, 0.45),
+    0 0 0 4px rgba(231, 207, 143, 0.18),
     inset 0 1px 0 rgba(255, 255, 255, 0.5);
-  animation: winningCardPulse 1.9s ease-in-out infinite;
-}
-
-@keyframes winningCardPulse {
-  0%,
-  100% {
-    box-shadow:
-      0 18px 28px rgba(0, 0, 0, 0.32),
-      0 0 0 2px var(--gold-light),
-      0 0 0 4px rgba(231, 207, 143, 0.22),
-      0 0 18px rgba(231, 207, 143, 0.36),
-      inset 0 1px 0 rgba(255, 255, 255, 0.5);
-  }
-  50% {
-    box-shadow:
-      0 20px 32px rgba(0, 0, 0, 0.34),
-      0 0 0 2px var(--gold-light),
-      0 0 0 6px rgba(231, 207, 143, 0.32),
-      0 0 30px rgba(231, 207, 143, 0.58),
-      inset 0 1px 0 rgba(255, 255, 255, 0.5);
-  }
 }
 
 .played-by.is-winning {
@@ -1559,7 +1548,10 @@ input:focus {
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding: 8px 12px max(6px, env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid rgba(246, 239, 225, 0.1);
+  border-radius: 18px 18px 0 0;
+  background: linear-gradient(180deg, rgba(4, 25, 19, 0.38), rgba(4, 17, 13, 0.12));
 }
 
 .self-area.is-dragging {
@@ -1587,7 +1579,7 @@ input:focus {
   width: 100%;
   max-width: 100%;
   min-height: clamp(140px, 18vh, 185px);
-  padding: 28px 20px 8px;
+  padding: 24px 20px 8px;
   perspective: 900px;
   overflow-x: auto;
   overflow-y: visible;
@@ -1629,6 +1621,14 @@ input:focus {
   white-space: nowrap;
 }
 
+/* Keep selection actions out of the board's sizing calculation. */
+.play-action-slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+}
+
 .play-fab,
 .bid-chip,
 .btn-primary,
@@ -1661,6 +1661,36 @@ input:focus {
   box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.04);
   backdrop-filter: blur(18px);
   padding: 1.5rem;
+}
+
+.overlay--admin {
+  background: rgba(2, 10, 8, 0.62);
+  backdrop-filter: blur(3px);
+}
+
+.admin-card {
+  width: min(480px, 100%);
+  border-radius: 14px;
+  padding: 1.25rem;
+  box-shadow: 0 24px 58px rgba(0, 0, 0, 0.52), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.admin-card .control-section {
+  margin: 0.8rem 0;
+}
+
+.admin-card .control-actions .btn-primary {
+  min-width: 9rem;
+}
+
+.admin-card .control-actions {
+  padding-top: 0.25rem;
+  border-top: 1px solid var(--line);
+}
+
+.admin-card .stepper-value {
+  font-family: var(--font-body);
+  font-size: 1.1rem;
 }
 
 .overlay-card h2 {
@@ -1709,36 +1739,69 @@ input:focus {
 
 .bid-chip {
   min-height: 52px;
-  font-size: 1.05rem;
+  font-size: 1.1rem;
   font-weight: 800;
   color: var(--ivory);
-  background: var(--surface-soft);
-  border-color: var(--line);
-  border-radius: 14px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  background: rgba(201, 162, 74, 0.16);
+  border-color: rgba(231, 207, 143, 0.62);
+  border-radius: var(--radius);
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.22);
+  transition: transform 120ms ease-out, background-color 120ms ease-out,
+    border-color 120ms ease-out, box-shadow 120ms ease-out;
 }
 
 .bid-chip:hover:not(:disabled) {
-  background: rgba(201, 162, 74, 0.2);
-  border-color: var(--gold);
+  background: rgba(231, 207, 143, 0.28);
+  border-color: var(--gold-light);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
+}
+
+.bid-chip:active:not(:disabled) {
+  transform: translateY(1px);
+  background: rgba(231, 207, 143, 0.36);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.24);
+}
+
+.bid-chip.is-selected,
+.bid-chip.is-selected:disabled {
+  opacity: 1;
+  color: var(--ink);
+  background: var(--gold-light);
+  border-color: var(--gold-light);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.28);
 }
 
 .bid-chip.forbidden {
-  color: #f0b3b3;
-  background: rgba(179, 40, 54, 0.16);
-  border-color: rgba(179, 40, 54, 0.35);
+  opacity: 0.52;
+  color: var(--ivory-mute);
+  background: rgba(246, 239, 225, 0.035);
+  border-color: var(--line);
+  box-shadow: none;
   cursor: not-allowed;
 }
 
 /* Contextual bidding panel (near the hand) */
 
 .bidding-panel {
-  border: 1px solid rgba(201, 162, 74, 0.28);
-  border-radius: 20px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
   background: linear-gradient(180deg, rgba(12, 39, 31, 0.94), rgba(6, 22, 17, 0.94));
-  box-shadow: var(--shadow-soft), inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(14px);
-  padding: 0.8rem 1rem;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.34);
+  padding: 0.62rem 0.78rem;
+}
+
+.self-area .bidding-panel {
+  width: min(560px, 100%);
+  align-self: center;
+}
+
+.bidding-panel--action {
+  border-color: rgba(231, 207, 143, 0.52);
+}
+
+.bidding-panel--waiting {
+  border-color: var(--line);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.24);
 }
 
 .bidding-head {
@@ -1751,7 +1814,7 @@ input:focus {
 
 .bidding-head h3 {
   margin: 0;
-  font-size: 1rem;
+  font-size: 0.92rem;
   font-weight: 800;
 }
 
@@ -1777,8 +1840,8 @@ input:focus {
 }
 
 .bid-timer-count {
-  font-family: var(--font-display);
-  font-size: 1.15rem;
+  font-family: var(--font-body);
+  font-size: 1rem;
   font-weight: 800;
   line-height: 1;
 }
@@ -1822,17 +1885,28 @@ input:focus {
   color: #f0a3a3;
   border-color: rgba(179, 40, 54, 0.44);
   background: rgba(179, 40, 54, 0.14);
-  animation: bidTimerPulse 1s ease-in-out infinite;
-}
-
-@keyframes bidTimerPulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(179, 40, 54, 0); }
-  50% { box-shadow: 0 0 0 4px rgba(179, 40, 54, 0.14); }
 }
 
 .bidding-panel .bid-grid {
   margin-top: 0;
-  grid-template-columns: repeat(auto-fit, minmax(48px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(42px, 1fr));
+}
+
+.bidding-panel .bid-chip {
+  min-height: 42px;
+  padding: 0.35rem 0.5rem;
+  font-family: var(--font-body);
+  font-size: 0.98rem;
+}
+
+.game-layout--paused .self-area,
+.game-layout--paused .table-stage {
+  filter: saturate(0.82);
+}
+
+.game-layout--paused .bidding-panel,
+.game-layout--paused .self-area {
+  opacity: 0.78;
 }
 
 /* Confirm-leave dialog */
@@ -1958,7 +2032,7 @@ input:focus {
 }
 
 .score-row .score-value {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: 1.3rem;
   font-weight: 800;
   color: var(--gold-light);
@@ -2074,6 +2148,16 @@ input:focus {
     min-height: 230px;
   }
 
+  .game-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .game-header-top,
+  .game-header-bottom {
+    flex-wrap: wrap;
+  }
+
   .table-inner {
     min-height: 220px;
     padding: 16px;
@@ -2104,6 +2188,11 @@ input:focus {
     inset: 3px;
     width: 34px;
     height: 34px;
+  }
+
+  .self-area {
+    width: 100%;
+    margin-top: auto;
   }
 }
 
@@ -2161,6 +2250,34 @@ input:focus {
     padding: 8px 10px 4px;
     min-height: clamp(120px, 11rem, 170px);
   }
+
+  .self-area {
+    gap: 2px;
+    padding: 6px 2px max(4px, env(safe-area-inset-bottom, 0px));
+    border-radius: 14px 14px 0 0;
+  }
+
+  .self-area .bidding-panel {
+    width: 100%;
+    padding: 0.7rem;
+    border-radius: 12px;
+  }
+
+  .bidding-head {
+    margin-bottom: 0.45rem;
+  }
+
+  .bidding-head h3 {
+    font-size: 0.9rem;
+  }
+
+  .bidding-panel .bid-grid {
+    gap: 0.35rem;
+  }
+
+  .bidding-panel .bid-chip {
+    min-height: 46px;
+  }
 }
 
 /* ---------- Reduced motion ---------- */
@@ -2213,15 +2330,31 @@ input:focus {
     box-shadow: none;
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    display: flex;
     align-items: center;
     gap: 0.5rem 1rem;
     font-size: 0.74rem;
     color: var(--ivory-soft);
   }
 
+  .game-header-top,
+  .game-header-bottom {
+    display: flex;
+    width: auto;
+  }
+
+  .game-header-top {
+    flex: 1 1 auto;
+    justify-content: flex-start;
+  }
+
+  .game-header-bottom {
+    flex: 0 0 auto;
+    justify-content: flex-end;
+  }
+
   .game-header-meta,
+  .game-header-round,
   .game-header-actions {
     display: flex;
     align-items: center;
@@ -2231,6 +2364,10 @@ input:focus {
 
   .game-header-actions {
     justify-content: flex-end;
+  }
+
+  .room-mark {
+    font-size: 0.82rem;
   }
 
   .gh-item,

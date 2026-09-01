@@ -186,7 +186,7 @@ export function PlayingHand({ cards, isMyTurn, legalCardIds, onPlayCard, dropZon
               >
                 <PlayingCard
                   card={card}
-                  delay={revealDeal ? index * 0.07 : index * 0.04}
+                   delay={revealDeal ? index * 0.07 : 0}
                   reveal={revealDeal}
                   disabled={!playable}
                   isPlayable={playable}
@@ -211,22 +211,24 @@ export function PlayingHand({ cards, isMyTurn, legalCardIds, onPlayCard, dropZon
         {cards.length === 0 && <p className="hand-empty">No cards yet.</p>}
       </div>
 
-      <AnimatePresence>
-        {selectedCard && (
-          <motion.button
-            type="button"
-            className="play-fab btn-primary"
-            onClick={handlePlaySelected}
-            initial={{ opacity: 0, y: 12, scale: 0.92 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 12, scale: 0.92 }}
-            transition={{ type: "spring", stiffness: 380, damping: 28 }}
-          >
-            Play {selectedCard.label}
-            {SUIT_PIPS[selectedCard.suit]}
-          </motion.button>
-        )}
-      </AnimatePresence>
+      <div className="play-action-slot" aria-live="polite">
+        <AnimatePresence>
+          {selectedCard && (
+            <motion.button
+              type="button"
+              className="play-fab btn-primary"
+              onClick={handlePlaySelected}
+              initial={{ opacity: 0, y: 12, scale: 0.92 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 12, scale: 0.92 }}
+              transition={{ type: "spring", stiffness: 380, damping: 28 }}
+            >
+              Play {selectedCard.label}
+              {SUIT_PIPS[selectedCard.suit]}
+            </motion.button>
+          )}
+        </AnimatePresence>
+      </div>
     </section>
   );
 }

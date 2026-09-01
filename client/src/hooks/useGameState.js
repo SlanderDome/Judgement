@@ -236,6 +236,28 @@ export function useGameState() {
     });
   }
 
+  function startBidding() {
+    if (!roomState || !clientPlayerId) {
+      return;
+    }
+
+    socket.emit("game:start_bidding", {
+      roomId: roomState.roomId,
+      playerId: clientPlayerId
+    });
+  }
+
+  function togglePause() {
+    if (!roomState || !clientPlayerId) {
+      return;
+    }
+
+    socket.emit("game:toggle_pause", {
+      roomId: roomState.roomId,
+      playerId: clientPlayerId
+    });
+  }
+
   function playCard(cardId) {
     if (!roomState || !clientPlayerId) {
       return;
@@ -283,6 +305,8 @@ export function useGameState() {
       takeSeat,
       leaveSeat,
       startGame,
+      startBidding,
+      togglePause,
       submitBid,
       playCard,
       nextRound,

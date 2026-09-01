@@ -68,6 +68,7 @@ export function createRoom({ roomId, player }) {
       endsAt: null,
       durationMs: null
     },
+    paused: false,
     createdAt: Date.now(),
     updatedAt: Date.now()
   };
@@ -144,6 +145,7 @@ function dealRound(room) {
 
 function prepareRound(room) {
   room.status = ROOM_STATUS.PRE_BIDDING;
+  room.paused = false;
   room.currentRound = createEmptyCurrentRound();
   room.gameConfig.currentTurnIndex = firstActorIndex(room);
   // Countdown to the automatic bidding start (handleTurnTimeout advances it).
@@ -159,8 +161,35 @@ export function startBidding(room) {
   }
 
   room.status = ROOM_STATUS.BIDDING;
+  room.paused = false;
   room.gameConfig.currentTurnIndex = firstActorIndex(room);
   room.timer = { endsAt: Date.now() + BID_TIMEOUT_MS, durationMs: BID_TIMEOUT_MS };
+  room.updatedAt = Date.now();
+  return room;
+}
+
+export function togglePause(room) {
+  if (![ROOM_STATUS.PRE_BIDDING, ROOM_STATUS.BIDDING, ROOM_STATUS.TRICK_PLAYING, ROOM_STATUS.TRICK_COMPLETE].includes(room.status)) {
+    throw new Error("The game cannot be paused right now.");
+  }
+
+  if (room.paused) {
+    const remainingMs = Math.max(0, room.timer?.remainingMs ?? 0);
+    room.paused = false;
+    room.timer = {
+      ...room.timer,
+      endsAt: Date.now() + remainingMs
+    };
+  } else {
+    const remainingMs = room.timer?.endsAt ? Math.max(0, room.timer.endsAt - Date.now()) : 0;
+    room.paused = true;
+    room.timer = {
+      ...room.timer,
+      endsAt: null,
+      remainingMs
+    };
+  }
+
   room.updatedAt = Date.now();
   return room;
 }
@@ -503,6 +532,10 @@ export function selectLowestRiskCard(room, cards) {
 }
 
 export function handleTurnTimeout(room) {
+  if (room.paused) {
+    return room;
+  }
+
   if (room.status === ROOM_STATUS.PRE_BIDDING) {
     // Countdown finished — start bidding automatically.
     return startBidding(room);
@@ -678,6 +711,7 @@ export function resetRoom(room) {
   room.timer = {
     endsAt: null
   };
+  room.paused = false;
   room.players.forEach((player) => {
     player.hand = [];
     player.currentBid = null;
@@ -694,6 +728,7 @@ export function sanitizeRoomForPlayer(room, playerId) {
     roomId: room.roomId,
     adminPlayerId: room.adminPlayerId,
     status: room.status,
+    paused: room.paused === true,
     seatCount: room.seatCount ?? SEAT_COUNT,
     createdAt: room.createdAt,
     updatedAt: room.updatedAt,

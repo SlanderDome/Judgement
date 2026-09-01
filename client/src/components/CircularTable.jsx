@@ -81,9 +81,7 @@ export function CircularTable({
                 <span className="seat-sit__num">{seatIndex + 1}</span>
               </button>
             ) : (
-              <div className="seat-empty" aria-hidden="true">
-                <span className="seat-empty__num">{seatIndex + 1}</span>
-              </div>
+              <div className="seat-empty" aria-hidden="true" />
             )}
           </div>
         );

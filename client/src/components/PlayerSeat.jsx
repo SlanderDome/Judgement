@@ -13,20 +13,13 @@ function PlayerSeatComponent({
   timerDurationMs = null
 }) {
   const hue = ((player.seatIndex ?? 0) * 137.508) % 360;
-  const cardCount = player.handCount ?? player.hand?.length ?? 0;
   const hasBid = player.currentBid != null;
   const isOffline = !player.isOnline;
   const seatStatus = isOffline
     ? "Offline"
-    : isTurn
-      ? isClient
-        ? "Your turn"
-        : "Acting"
-      : isRecentlyActed
-        ? "Just acted"
-        : isDealer
-          ? "Dealer"
-          : "Waiting";
+    : isTurn && !isClient
+      ? "Acting"
+      : null;
 
   return (
     <motion.div
@@ -40,8 +33,8 @@ function PlayerSeatComponent({
       ].join(" ")}
       style={{ "--seat-hue": hue, zIndex: isTurn ? 7 : undefined }}
       initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0, scale: isTurn ? 1.14 : 1 }}
-      transition={{ type: "spring", stiffness: 300, damping: 22 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.18, ease: "easeOut" }}
     >
       <div className="seat-avatar-wrap">
         <span className="seat-avatar" aria-hidden="true">
@@ -57,24 +50,16 @@ function PlayerSeatComponent({
         )}
       </div>
       <div className="seat-info">
-        <span className="seat-name">
-          {player.nickname}
-          {isClient && <em className="seat-you">you</em>}
-        </span>
-        <span className="seat-status">{seatStatus}</span>
-        {hasBid ? (
+        <span className="seat-name">{player.nickname}</span>
+        {isClient && <span className="seat-you">You</span>}
+        {seatStatus && <span className="seat-status">{seatStatus}</span>}
+        {!isOffline && hasBid && (
           <span
             className="seat-bid-badge"
             title={`Bid: ${player.currentBid}, Tricks won: ${player.tricksWon}`}
           >
             Bid {player.currentBid} · {player.tricksWon} won
           </span>
-        ) : (
-          !isClient && (
-            <span className="seat-cards">
-              {cardCount} {cardCount === 1 ? "card" : "cards"}
-            </span>
-          )
         )}
       </div>
     </motion.div>

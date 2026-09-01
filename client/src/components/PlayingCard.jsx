@@ -52,7 +52,6 @@ function PlayingCardComponent({
       onClick={onClick}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      layoutId={card?.id}
       initial={
         reveal
           ? { opacity: 0, y: 30, rotate: rotation, rotateX: 0, rotateY: -82, scale: 0.9 }
@@ -73,23 +72,24 @@ function PlayingCardComponent({
         scale: isSelected ? 1.14 : 1,
         zIndex: isSelected ? 140 : undefined
       }}
-      whileHover={!disabled ? { y: y - 38, rotate: rotation + pointerTilt * 0.5, scale: 1.13 } : undefined}
+      whileHover={!disabled ? { y: y - 22, rotate: rotation + pointerTilt * 0.5, scale: 1.06 } : undefined}
       whileTap={!disabled ? { scale: 0.98, y: y - 18 } : undefined}
       drag={isDraggable && !disabled}
       dragSnapToOrigin={isDraggable}
-      dragElastic={0.16}
+      dragElastic={0.08}
       dragMomentum={false}
+      dragTransition={{ bounceStiffness: 300, bounceDamping: 30 }}
       whileDrag={{
-        scale: 1.14,
+        scale: 1.08,
         zIndex: 150,
         rotate: 0,
         rotateX: -10,
         y: 0,
-        boxShadow: "0 24px 48px rgba(0, 0, 0, 0.5), 0 0 0 3px var(--gold)"
+        boxShadow: "0 20px 36px rgba(0, 0, 0, 0.46), 0 0 0 2px var(--gold-light)"
       }}
       onDragStart={onDragStart}
       onDragEnd={(event, info) => onDragEnd?.(info)}
-      transition={{ type: "spring", stiffness: 360, damping: 28, delay }}
+      transition={{ type: "spring", stiffness: 300, damping: 30, delay }}
       aria-label={`${altText}${ownerName ? ` played by ${ownerName}` : ""}`}
     >
       <img

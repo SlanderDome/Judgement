@@ -62,6 +62,8 @@ export function GameBoard({
   clientPlayerId,
   isConnected,
   onStartGame,
+  onStartBidding,
+  onTogglePause,
   onSubmitBid,
   onPlayCard,
   onTakeSeat,
@@ -97,6 +99,7 @@ export function GameBoard({
   const isTrickComplete = status === "TRICK_COMPLETE";
   const isSummary = status === "ROUND_SUMMARY";
   const isGameOver = status === "GAME_OVER";
+  const isPaused = roomState.paused === true;
   const turnPlayer = currentTurnPlayer(roomState);
   const turnActive = status === "BIDDING" || isPlaying;
   const isMyTurn = turnActive && turnPlayer?.playerId === clientPlayerId;
@@ -108,18 +111,20 @@ export function GameBoard({
     : currentTrickCards[currentTrickCards.length - 1]?.playerId ??
       roomState.currentRound?.lastTrick?.winnerPlayerId ??
       null;
-  const phaseLabel =
-    {
-      LOBBY: "Lobby",
-      PRE_BIDDING: "Waiting",
-      BIDDING: "Bidding",
-      TRICK_PLAYING: isMyTurn ? "Your turn" : "Waiting",
-      TRICK_COMPLETE: "Trick won",
-      ROUND_SUMMARY: "Round complete",
-      GAME_OVER: "Round complete"
-    }[status] ?? status;
-  const turnLabel =
-    status === "LOBBY"
+  const phaseLabel = isPaused
+    ? "Paused"
+    : {
+        LOBBY: "Lobby",
+        PRE_BIDDING: "Waiting",
+        BIDDING: "Bidding",
+        TRICK_PLAYING: isMyTurn ? "Your turn" : "Waiting",
+        TRICK_COMPLETE: "Trick won",
+        ROUND_SUMMARY: "Round complete",
+        GAME_OVER: "Game over"
+      }[status] ?? status;
+  const turnLabel = isPaused
+    ? "Game paused"
+    : status === "LOBBY"
       ? "Waiting for host"
       : status === "PRE_BIDDING"
         ? "Get ready"
@@ -148,7 +153,7 @@ export function GameBoard({
 
   // Bidding auto-starts after a countdown, so the host has nothing to do during
   // PRE_BIDDING — the panel is only for the lobby and between-round setup.
-  const canOpenHostPanel = isAdmin && (isLobby || isSummary);
+  const canOpenHostPanel = isAdmin && !isGameOver;
   const timerEndsAt = roomState.timer?.endsAt ?? null;
   const timerDurationMs = roomState.timer?.durationMs ?? null;
   const seatedCount = seatedPlayers(roomState).length;
@@ -159,10 +164,18 @@ export function GameBoard({
 
   const tableCenter = isLobby ? (
     <div className="table-lobby-note">
-      <strong>
-        {seatedCount}/{seatCap}
-      </strong>
-      {seatedCount < 2 ? "Waiting for players to sit down" : "Ready when the host starts"}
+      {seatedCount < 2 ? (
+        <>
+          <span className="table-lobby-note__title">Waiting for players</span>
+          <strong>{seatedCount}/{seatCap} seated</strong>
+          <span>Take a seat to join the table</span>
+        </>
+      ) : (
+        <>
+          <strong>{seatedCount}/{seatCap}</strong>
+          Ready when the host starts
+        </>
+      )}
     </div>
   ) : isPreBidding ? (
     isDealing ? (
@@ -185,7 +198,11 @@ export function GameBoard({
   );
 
   return (
-    <div className={`game-layout game-layout--${status.toLowerCase().replace(/_/g, "-")}`}>
+    <div
+      className={`game-layout game-layout--${status.toLowerCase().replace(/_/g, "-")} ${
+        isDealing ? "game-layout--dealing" : ""
+      } ${isPaused ? "game-layout--paused" : ""}`}
+    >
       <header className="game-header">
         <div className="game-header-meta">
           <RoomCodeButton roomId={roomState.roomId} />
@@ -220,7 +237,7 @@ export function GameBoard({
           <ConnectionBadge isConnected={isConnected} />
           <span className={`gh-item gh-state gh-state--${phaseLabel.toLowerCase().replace(/\s+/g, "-")}`} aria-label={`Phase ${phaseLabel}, ${turnLabel}`}>
             <strong>{phaseLabel}</strong>
-            <span>{turnLabel}</span>
+            {turnLabel !== phaseLabel && <span>{turnLabel}</span>}
           </span>
           <button type="button" className="btn-ghost btn-sm" onClick={() => setLeaveOpen(true)}>
             Main menu
@@ -242,7 +259,7 @@ export function GameBoard({
           dealerPlayerId={showDealerId}
           currentTurnPlayerId={activeTurnId}
           recentlyActedPlayerId={!isMyTurn ? recentlyActedPlayerId : null}
-          timerEndsAt={timerEndsAt}
+          timerEndsAt={status === "BIDDING" ? null : timerEndsAt}
           timerDurationMs={timerDurationMs}
           dealPhase={dealPhase}
           onTakeSeat={onTakeSeat}
@@ -265,12 +282,16 @@ export function GameBoard({
       )}
 
       {clientPlayer && clientSeated && !isLobby && (
-       <div className={`self-area ${isDealing ? "is-dealing" : ""} ${isDragging ? "is-dragging" : ""}`}>
+        <div
+          className={`self-area self-area--${status.toLowerCase().replace(/_/g, "-")} ${
+            isDealing ? "is-dealing" : ""
+          } ${isDragging ? "is-dragging" : ""}`}
+        >
           <BiddingOverlay roomState={roomState} clientPlayerId={clientPlayerId} onSubmitBid={onSubmitBid} />
           <PlayingHand
             key={revealKey}
             cards={hand}
-            isMyTurn={isPlaying && isMyTurn}
+             isMyTurn={isPlaying && isMyTurn && !isPaused}
             legalCardIds={legalCardIds}
             onPlayCard={isPlaying && isMyTurn ? onPlayCard : undefined}
             dropZoneRef={dropZoneRef}
@@ -328,10 +349,20 @@ export function GameBoard({
       )}
 
       {adminOpen && (
-        <motion.div className="overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.16 }}>
-          <AdminRoundControl
-            roomState={roomState}
-            onStartGame={onStartGame}
+        <motion.div
+          className="overlay overlay--admin"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Host controls"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.16 }}
+        >
+            <AdminRoundControl
+              roomState={roomState}
+              onStartGame={onStartGame}
+              onStartBidding={onStartBidding}
+              onTogglePause={onTogglePause}
             onNextRound={onNextRound}
             onClose={() => setAdminOpen(false)}
           />

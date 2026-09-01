@@ -16,7 +16,8 @@ import {
   startBidding as startBiddingPhase,
   startGame,
   submitBid,
-  takeSeat as takeRoomSeat
+  takeSeat as takeRoomSeat,
+  togglePause
 } from "./stateEngine.js";
 
 const ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -157,6 +158,10 @@ export class RoomManager {
       throw new Error("Room not found.");
     }
 
+    if (room.paused) {
+      throw new Error("The game is paused.");
+    }
+
     submitBid(room, playerId, bid);
     room.currentRound.forbiddenBidForFinalPlayer =
       room.status === "BIDDING" ? getBiddingContext(room).forbiddenBidForFinalPlayer : null;
@@ -168,6 +173,10 @@ export class RoomManager {
 
     if (!room) {
       throw new Error("Room not found.");
+    }
+
+    if (room.paused) {
+      throw new Error("The game is paused.");
     }
 
     playCard(room, playerId, cardId);
@@ -187,6 +196,20 @@ export class RoomManager {
 
     startBiddingPhase(room);
     return room;
+  }
+
+  togglePause(roomId, playerId) {
+    const room = this.getRoom(roomId);
+
+    if (!room) {
+      throw new Error("Room not found.");
+    }
+
+    if (room.adminPlayerId !== playerId) {
+      throw new Error("Only the room admin can pause the game.");
+    }
+
+    return togglePause(room);
   }
 
   reorderPlayers(roomId, playerId, orderedPlayerIds) {

@@ -5,7 +5,9 @@ import { useCountdown } from "../lib/useCountdown.js";
 
 export function BiddingOverlay({ roomState, clientPlayerId, onSubmitBid }) {
   const [ready, setReady] = useState(false);
+  const [selectedBid, setSelectedBid] = useState(null);
   const isBidding = roomState.status === "BIDDING";
+  const isPaused = roomState.paused === true;
 
   useEffect(() => {
     if (!isBidding) {
@@ -16,6 +18,10 @@ export function BiddingOverlay({ roomState, clientPlayerId, onSubmitBid }) {
     const timerId = window.setTimeout(() => setReady(true), 400);
     return () => window.clearTimeout(timerId);
   }, [isBidding]);
+
+  useEffect(() => {
+    setSelectedBid(null);
+  }, [roomState.gameConfig.currentTurnIndex, isBidding]);
 
   const endsAt = isBidding ? roomState.timer?.endsAt ?? null : null;
   const durationMs = roomState.timer?.durationMs ?? 30000;
@@ -78,7 +84,7 @@ export function BiddingOverlay({ roomState, clientPlayerId, onSubmitBid }) {
   const bids = Object.values(roomState.currentRound?.bids ?? {});
   const bidTotal = bids.reduce((sum, bid) => sum + bid, 0);
   const currentPlayer = currentTurnPlayer(roomState);
-  const isMyTurn = currentPlayer?.playerId === clientPlayerId;
+  const isMyTurn = currentPlayer?.playerId === clientPlayerId && !isPaused;
   const forbiddenBid =
     roomState.currentRound?.forbiddenBidForFinalPlayer ??
     (seatedPlayers(roomState).length - 1 === bids.length ? cardsInRound - bidTotal : null);
@@ -90,19 +96,26 @@ export function BiddingOverlay({ roomState, clientPlayerId, onSubmitBid }) {
   const span = durationMs > 0 ? durationMs : 30000;
   const progress = endsAt ? Math.max(0, Math.min(1, remainingMs / span)) : 0;
 
+  function handleBid(bid) {
+    setSelectedBid(bid);
+    onSubmitBid(bid);
+  }
+
   return (
     <motion.section
-      className="bidding-panel"
+      className={`bidding-panel ${isMyTurn ? "bidding-panel--action" : "bidding-panel--waiting"}`}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ type: "spring", stiffness: 320, damping: 30 }}
+      transition={{ duration: 0.18, ease: "easeOut" }}
       aria-live="polite"
     >
       <div className="bidding-head">
         <div>
           <p className="eyebrow">Bidding</p>
           <h3>
-            {isMyTurn
+             {isPaused
+               ? "Game paused"
+               : isMyTurn
               ? expired
                 ? "Time's up — auto-bidding…"
                 : "Call your bid"
@@ -129,23 +142,28 @@ export function BiddingOverlay({ roomState, clientPlayerId, onSubmitBid }) {
         </div>
       </div>
 
-      <div className="bid-grid">
-        {bidOptions.map((bid) => {
-          const isForbidden = forbiddenBid !== null && bid === forbiddenBid;
+      {isMyTurn && (
+        <div className="bid-grid" aria-label="Choose your bid">
+          {bidOptions.map((bid) => {
+            const isForbidden = forbiddenBid !== null && bid === forbiddenBid;
+            const isSelected = selectedBid === bid;
 
-          return (
-            <button
-              key={bid}
-              type="button"
-              className={`bid-chip ${isForbidden ? "forbidden" : ""}`}
-              onClick={() => onSubmitBid(bid)}
-              disabled={!isMyTurn || isForbidden || expired}
-            >
-              {bid}
-            </button>
-          );
-        })}
-      </div>
+            return (
+              <button
+                key={bid}
+                type="button"
+                className={`bid-chip ${isForbidden ? "forbidden" : ""} ${isSelected ? "is-selected" : ""}`}
+                onClick={() => handleBid(bid)}
+                disabled={isForbidden || expired || selectedBid !== null}
+                aria-pressed={isSelected}
+                title={isForbidden ? `${bid} is not allowed for the final bidder` : `Bid ${bid}`}
+              >
+                {bid}
+              </button>
+            );
+          })}
+        </div>
+      )}
     </motion.section>
   );
 }
