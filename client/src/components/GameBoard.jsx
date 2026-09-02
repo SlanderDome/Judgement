@@ -239,6 +239,11 @@ export function GameBoard({
             <strong>{phaseLabel}</strong>
             {turnLabel !== phaseLabel && <span>{turnLabel}</span>}
           </span>
+          {isAdmin && isPreBidding && (
+            <button type="button" className="btn-primary btn-sm" onClick={onStartBidding}>
+              Start bidding now
+            </button>
+          )}
           <button type="button" className="btn-ghost btn-sm" onClick={() => setLeaveOpen(true)}>
             Main menu
           </button>
