@@ -6,12 +6,14 @@ import { CircularTable } from "./CircularTable.jsx";
 import { ConfirmLeaveModal } from "./ConfirmLeaveModal.jsx";
 import { ConnectionBadge } from "./ConnectionBadge.jsx";
 import { RoomCodeButton } from "./RoomCodeButton.jsx";
+import { SoundToggle } from "./SoundToggle.jsx";
 import { PlayingHand } from "./PlayingHand.jsx";
 import { TrumpIndicator } from "./TrumpIndicator.jsx";
 import { TrickTable } from "./TrickTable.jsx";
 import { Seconds } from "./Seconds.jsx";
 import { currentTurnPlayer, dealerPlayer, isSeated, seatedPlayers } from "../lib/seats.js";
 import { useDealSequence } from "../hooks/useDealSequence.js";
+import { useGameSounds } from "../hooks/useGameSounds.js";
 
 function Scoreboard({ roomState, clientPlayerId, action }) {
   const scores = roomState.currentRound?.roundSummary?.scores ?? seatedPlayers(roomState);
@@ -61,6 +63,7 @@ export function GameBoard({
   roomState,
   clientPlayerId,
   isConnected,
+  errorMessage,
   onStartGame,
   onStartBidding,
   onTogglePause,
@@ -71,6 +74,8 @@ export function GameBoard({
   onRematch,
   onLeaveRoom
 }) {
+  useGameSounds(roomState, clientPlayerId, errorMessage);
+
   const [adminOpen, setAdminOpen] = useState(false);
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -234,6 +239,7 @@ export function GameBoard({
           )}
         </div>
         <div className="game-header-actions">
+          <SoundToggle />
           <ConnectionBadge isConnected={isConnected} />
           <span className={`gh-item gh-state gh-state--${phaseLabel.toLowerCase().replace(/\s+/g, "-")}`} aria-label={`Phase ${phaseLabel}, ${turnLabel}`}>
             <strong>{phaseLabel}</strong>

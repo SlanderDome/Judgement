@@ -26,6 +26,7 @@ export default function App() {
             roomState={roomState}
             clientPlayerId={clientPlayerId}
             isConnected={isConnected}
+            errorMessage={errorMessage}
             onStartGame={actions.startGame}
             onStartBidding={actions.startBidding}
             onTogglePause={actions.togglePause}
