@@ -43,22 +43,25 @@ export function CircularTable({
 
       {seats.map((seatIndex) => {
         const occupant = bySeat.get(seatIndex);
+        const displaySlot = seatDisplaySlot(seatIndex, viewerSeat, total);
         const showFan =
           occupant &&
           roundActive &&
           !dealing &&
           occupant.playerId !== clientPlayerId &&
           (occupant.handCount ?? 0) > 0;
+        // Top-half seats fan upward — their "below" would land on the trick pile.
+        const fanAbove = seatUnitVector(displaySlot, total).y < -0.15;
 
         return (
           <div
             className="table-seat"
             key={seatIndex}
-            style={seatVars(seatDisplaySlot(seatIndex, viewerSeat, total), total)}
+            style={seatVars(displaySlot, total)}
           >
             {occupant ? (
               <>
-                {showFan && <SeatCardFan count={occupant.handCount} />}
+                {showFan && <SeatCardFan count={occupant.handCount} above={fanAbove} />}
                 <PlayerSeat
                   player={occupant}
                   isClient={occupant.playerId === clientPlayerId}
