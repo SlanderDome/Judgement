@@ -19,7 +19,7 @@ const PRE_BIDDING_TIMEOUT_MS = 30000;
 // before it clears to the winner.
 const TRICK_REVEAL_MS = 10000;
 // The scoreboard shows for this long, then the next round starts automatically.
-const ROUND_SUMMARY_MS = 15000;
+const ROUND_SUMMARY_MS = 5000;
 
 export const SEAT_COUNT = 8;
 

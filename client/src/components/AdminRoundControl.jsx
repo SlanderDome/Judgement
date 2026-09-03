@@ -15,11 +15,9 @@ export function AdminRoundControl({ roomState, onStartGame, onStartBidding, onTo
   const isPreBidding = roomState.status === "PRE_BIDDING";
   const canPause = !isLobby && !isSummary && roomState.status !== "GAME_OVER";
 
-  // Mirror the server ceiling (server/src/game/rules.js MAX_CARDS_PER_ROUND).
-  const MAX_CARDS_PER_ROUND = 10;
   const ring = seatedPlayers(roomState);
-  const activePlayersCount = (isLobby ? ring.length : ring.filter((p) => p.isOnline).length) || 1;
-  const maxAllowedCards = Math.max(1, Math.min(MAX_CARDS_PER_ROUND, Math.floor(52 / activePlayersCount)));
+  const seatedPlayersCount = ring.length || 1;
+  const maxAllowedCards = Math.max(1, Math.floor(52 / seatedPlayersCount));
 
   const defaultCards = isLobby ? 1 : Math.min(roomState.gameConfig.cardsInRound + 1, maxAllowedCards);
   const [cardsInRound, setCardsInRound] = useState(defaultCards);

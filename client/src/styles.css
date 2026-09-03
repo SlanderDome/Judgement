@@ -1484,6 +1484,7 @@ input:focus {
   cursor: pointer;
   isolation: isolate;
   overflow: hidden;
+  rotate: var(--pointer-tilt, 0deg);
 }
 
 /* The card art fills the container. Radius / shadow / hover live on the
@@ -2201,6 +2202,16 @@ input:focus {
   }
 
   .seat {
+    flex-direction: row;
+    gap: 0.5rem;
+    min-width: 0;
+    max-width: none;
+    padding: 0.25rem 0.4rem;
+  }
+
+  /* Match the desktop selector's specificity so compact mobile seats actually
+     switch to the horizontal layout. */
+  .poker-table .seat {
     flex-direction: row;
     gap: 0.5rem;
     min-width: 0;
