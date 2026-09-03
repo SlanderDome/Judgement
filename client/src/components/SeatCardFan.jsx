@@ -7,7 +7,7 @@ import { CARD_BACK } from "../lib/cards.js";
 // capped at a few cards regardless of hand size.
 const MAX_VISIBLE = 5;
 
-function SeatCardFanComponent({ count }) {
+function SeatCardFanComponent({ count, above = false }) {
   const n = Math.min(Math.max(Math.round(count ?? 0), 0), MAX_VISIBLE);
   if (n === 0) {
     return null;
@@ -15,7 +15,7 @@ function SeatCardFanComponent({ count }) {
 
   return (
     <motion.div
-      className="seat-fan"
+      className={`seat-fan ${above ? "seat-fan--above" : ""}`}
       aria-hidden="true"
       initial={{ opacity: 0, scale: 0.85, y: 6 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}

@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { PlayingCard } from "./PlayingCard.jsx";
+import { playSfx } from "../lib/sfx.js";
 
 const SUIT_PIPS = {
   SPADES: "♠",
@@ -26,7 +27,13 @@ export function PlayingHand({ cards, isMyTurn, legalCardIds, onPlayCard, dropZon
       return;
     }
 
-    setSelectedCardId((currentId) => (currentId === cardId ? null : cardId));
+    setSelectedCardId((currentId) => {
+      if (currentId === cardId) {
+        return null;
+      }
+      playSfx("select");
+      return cardId;
+    });
   }
 
   function handleCardMove(cardId, event) {
@@ -204,7 +211,12 @@ export function PlayingHand({ cards, isMyTurn, legalCardIds, onPlayCard, dropZon
                   rotation={rotation}
                   y={y}
                   onClick={() => handleCardClick(card.id)}
-                  onMouseEnter={() => setHoveredCardId(card.id)}
+                  onMouseEnter={() => {
+                    setHoveredCardId(card.id);
+                    if (playable) {
+                      playSfx("hover");
+                    }
+                  }}
                   onMouseMove={(event) => handleCardMove(card.id, event)}
                    onMouseLeave={handleCardLeave}
                   onDragStart={() => onDragStateChange?.(true)}

@@ -541,6 +541,27 @@ input:focus {
   font-weight: 700;
 }
 
+.sound-toggle {
+  padding: 0.42rem 0.55rem;
+  color: var(--ivory-soft);
+  cursor: pointer;
+  transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+
+.sound-toggle:hover {
+  color: var(--gold-light);
+  border-color: rgba(231, 207, 143, 0.32);
+}
+
+.sound-toggle.is-muted {
+  color: var(--ivory-mute);
+}
+
+.sound-toggle:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 2px;
+}
+
 .gh-state {
   gap: 0.45rem;
   border-color: rgba(231, 207, 143, 0.2);
@@ -1048,6 +1069,8 @@ input:focus {
 .poker-table__center {
   position: absolute;
   inset: 26% 22%;
+  /* Above the seats (z-index 5) so the trick pile is never covered by an
+     opponent's seat card or their face-down fan. */
   z-index: 6;
   display: flex;
   align-items: center;
@@ -1163,7 +1186,9 @@ input:focus {
   box-shadow: 0 8px 12px rgba(0, 0, 0, 0.5);
 }
 
-/* Opponent's face-down fan, tucked below their seat */
+/* Opponent's face-down fan, tucked beside their seat — on the outward side so it
+   never drifts over the centre trick pile. Bottom-half seats fan below; top-half
+   seats (where "below" would point at the table centre) fan above instead. */
 .seat-fan {
   --deck-card-w: clamp(40px, 4.4vw, 58px);
   position: absolute;
@@ -1172,8 +1197,15 @@ input:focus {
   transform: translate(-50%, -0.5rem);
   width: 0;
   height: calc(var(--deck-card-w) * 360 / 264);
-  z-index: 4;
+  z-index: 3;
   pointer-events: none;
+}
+
+.seat-fan--above {
+  --deck-card-w: clamp(32px, 3.4vw, 46px);
+  top: auto;
+  bottom: 100%;
+  transform: translate(-50%, 0.2rem);
 }
 
 .seat-fan__card {
