@@ -12,7 +12,6 @@ const SUIT_PIPS = {
 export function PlayingHand({ cards, isMyTurn, legalCardIds, onPlayCard, dropZoneRef, onDragStateChange, revealDeal = false }) {
   const [selectedCardId, setSelectedCardId] = useState(null);
   const [hoveredCardId, setHoveredCardId] = useState(null);
-  const [pointerTiltById, setPointerTiltById] = useState({});
   const [fan, setFan] = useState({ overlap: 0 });
   const handRef = useRef(null);
 
@@ -39,21 +38,12 @@ export function PlayingHand({ cards, isMyTurn, legalCardIds, onPlayCard, dropZon
     const x = event.clientX - rect.left;
     const offset = rect.width > 0 ? (x / rect.width - 0.5) * 12 : 0;
     const tilt = Math.max(-6, Math.min(6, offset));
-
-    setPointerTiltById((current) => (current[cardId] === tilt ? current : { ...current, [cardId]: tilt }));
+    event.currentTarget.style.setProperty("--pointer-tilt", `${tilt}deg`);
   }
 
-  function handleCardLeave(cardId) {
+  function handleCardLeave(event) {
     setHoveredCardId(null);
-    setPointerTiltById((current) => {
-      if (!(cardId in current)) {
-        return current;
-      }
-
-      const next = { ...current };
-      delete next[cardId];
-      return next;
-    });
+    event.currentTarget.style.removeProperty("--pointer-tilt");
   }
 
   function handlePlaySelected() {
@@ -83,12 +73,10 @@ export function PlayingHand({ cards, isMyTurn, legalCardIds, onPlayCard, dropZon
     }
   }
 
-  // Keyboard: number keys play the Nth card, left-to-right. 1–9 map to the first
-  // nine cards; 0 maps to the tenth (rightmost) card in a 10-card round. Only
-  // when it's your turn to play and the round has 10 cards or fewer.
-  // Equivalent to clicking that card and confirming, or dragging it to the table.
+  // Keyboard: number keys address the first ten cards. Arrow keys cover larger
+  // hands, and Enter confirms the selected card.
   const playKbRef = useRef({});
-  playKbRef.current = { isMyTurn, legalCardIds, onPlayCard, cards };
+  playKbRef.current = { isMyTurn, legalCardIds, onPlayCard, cards, selectedCardId };
   useEffect(() => {
     function handleKey(event) {
       if (event.defaultPrevented || event.repeat || event.metaKey || event.ctrlKey || event.altKey) {
@@ -102,22 +90,43 @@ export function PlayingHand({ cards, isMyTurn, legalCardIds, onPlayCard, dropZon
         return; // a modal / scoreboard is open
       }
       const state = playKbRef.current;
-      if (!state.isMyTurn || !state.onPlayCard || state.cards.length === 0 || state.cards.length > 10) {
+      if (!state.isMyTurn || !state.onPlayCard || state.cards.length === 0) {
         return;
       }
-      if (!/^[0-9]$/.test(event.key)) {
+      if (/^[0-9]$/.test(event.key)) {
+        const key = Number(event.key);
+        const index = key === 0 ? 9 : key - 1;
+        const card = state.cards[index];
+        if (!card || !state.legalCardIds.has(card.id)) {
+          return;
+        }
+        event.preventDefault();
+        setSelectedCardId(null);
+        state.onPlayCard(card.id);
         return;
       }
-      const key = Number(event.key);
-      // 1–9 → index 0–8; 0 → index 9 (the tenth card).
-      const index = key === 0 ? 9 : key - 1;
-      const card = state.cards[index];
-      if (!card || !state.legalCardIds.has(card.id)) {
+
+      const playableCards = state.cards.filter((card) => state.legalCardIds.has(card.id));
+      if (playableCards.length === 0) {
         return;
       }
-      event.preventDefault();
-      setSelectedCardId(null);
-      state.onPlayCard(card.id);
+
+      if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+        event.preventDefault();
+        const currentIndex = playableCards.findIndex((card) => card.id === state.selectedCardId);
+        const direction = event.key === "ArrowRight" ? 1 : -1;
+        const nextIndex = currentIndex < 0
+          ? direction > 0 ? 0 : playableCards.length - 1
+          : (currentIndex + direction + playableCards.length) % playableCards.length;
+        setSelectedCardId(playableCards[nextIndex].id);
+        return;
+      }
+
+      if (event.key === "Enter" && state.selectedCardId && state.legalCardIds.has(state.selectedCardId)) {
+        event.preventDefault();
+        state.onPlayCard(state.selectedCardId);
+        setSelectedCardId(null);
+      }
     }
 
     window.addEventListener("keydown", handleKey);
@@ -166,7 +175,7 @@ export function PlayingHand({ cards, isMyTurn, legalCardIds, onPlayCard, dropZon
         <AnimatePresence mode="popLayout">
           {cards.map((card, index) => {
             const centerOffset = index - (cards.length - 1) / 2;
-            const maxRotation = Math.min(10, Math.max(4, 32 / Math.max(cards.length, 1)));
+            const maxRotation = Math.min(10, Math.max(2, 32 / Math.max(cards.length, 1)));
             const rotation = centerOffset * maxRotation;
             const y = Math.abs(centerOffset) * 4;
             const playable = isCardPlayable(card);
@@ -197,11 +206,10 @@ export function PlayingHand({ cards, isMyTurn, legalCardIds, onPlayCard, dropZon
                   onClick={() => handleCardClick(card.id)}
                   onMouseEnter={() => setHoveredCardId(card.id)}
                   onMouseMove={(event) => handleCardMove(card.id, event)}
-                  onMouseLeave={() => handleCardLeave(card.id)}
+                   onMouseLeave={handleCardLeave}
                   onDragStart={() => onDragStateChange?.(true)}
                   onDragEnd={(info) => handleDragEnd(card.id, info)}
-                  pointerTilt={pointerTiltById[card.id] ?? 0}
-                />
+                 />
               </motion.div>
             );
           })}

@@ -48,6 +48,7 @@ function PlayingCardComponent({
         isSelected ? "selected" : "",
         isTableCard && isWinning ? "is-winning" : ""
       ].join(" ")}
+      data-card-id={card?.id}
       disabled={disabled || isTableCard || !onClick}
       onClick={onClick}
       onMouseEnter={onMouseEnter}
