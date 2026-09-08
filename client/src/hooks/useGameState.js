@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSocket } from "../context/SocketContext.jsx";
+import { trackEvent } from "../analytics.js";
+import { seatedPlayers } from "../lib/seats.js";
 
 const SESSION_STORAGE_KEY = "judgement-session";
 const PLAYER_ID_STORAGE_KEY = "judgement-player-id";
@@ -43,6 +45,25 @@ export function useGameState() {
     () => getSavedSession()?.playerId || null
   );
   const [errorMessage, setErrorMessage] = useState("");
+  const roomStateRef = useRef(null);
+
+  function getPlayerCount(state) {
+    return state?.players?.length;
+  }
+
+  function getSeatedPlayerCount(state) {
+    return state ? seatedPlayers(state).length : undefined;
+  }
+
+  function roundParameters(state) {
+    const config = state?.gameConfig;
+    return {
+      round_number: config?.roundNumber,
+      cards_per_player: config?.cardsInRound,
+      phase: config?.phase?.toLowerCase(),
+      trump_suit: config?.trumpSuit
+    };
+  }
 
   const syncWithServer = useCallback(
     (session = getSavedSession()) => {
@@ -61,6 +82,40 @@ export function useGameState() {
 
   useEffect(() => {
     function handleRoomState(payload) {
+      const nextRoomState = payload.roomState;
+      const previousRoomState = roomStateRef.current;
+
+      if (nextRoomState) {
+        const previousStatus = previousRoomState?.status;
+        const nextStatus = nextRoomState.status;
+
+        if (nextStatus === "PRE_BIDDING" && previousStatus !== "PRE_BIDDING") {
+          if (previousStatus === "LOBBY") {
+            trackEvent("game_started", {
+              player_count: getSeatedPlayerCount(nextRoomState),
+              ...(nextRoomState.gameConfig?.cardsInRound
+                ? { cards_per_player: nextRoomState.gameConfig.cardsInRound }
+                : {})
+            });
+          }
+
+          trackEvent("round_started", roundParameters(nextRoomState));
+        }
+
+        if (nextStatus === "GAME_OVER" && previousStatus !== "GAME_OVER") {
+          trackEvent("game_completed", {
+            player_count: getSeatedPlayerCount(nextRoomState)
+          });
+        }
+
+        if (previousStatus === "GAME_OVER" && nextStatus === "LOBBY") {
+          trackEvent("rematch_started", {
+            player_count: getSeatedPlayerCount(nextRoomState) ?? getPlayerCount(nextRoomState)
+          });
+        }
+      }
+
+      roomStateRef.current = nextRoomState;
       setRoomState(payload.roomState);
       setClientPlayerId(payload.clientPlayerId);
       setErrorMessage("");
@@ -77,6 +132,11 @@ export function useGameState() {
     }
 
     function handleRoomCreated(payload) {
+      trackEvent("room_created", {
+        ...(getPlayerCount(roomStateRef.current) != null
+          ? { player_count: getPlayerCount(roomStateRef.current) }
+          : {})
+      });
       setClientPlayerId(payload.playerId);
       setErrorMessage("");
       saveSession({
@@ -87,6 +147,15 @@ export function useGameState() {
     }
 
     function handleRoomJoined(payload) {
+      if (payload.reconnected) {
+        trackEvent("player_reconnected");
+      } else {
+        trackEvent("room_joined", {
+          ...(getPlayerCount(roomStateRef.current) != null
+            ? { player_count: getPlayerCount(roomStateRef.current) }
+            : {})
+        });
+      }
       setClientPlayerId(payload.playerId);
       setErrorMessage("");
       saveSession({
@@ -180,11 +249,19 @@ export function useGameState() {
   }
 
   function leaveRoom() {
+    const wasInActiveGame =
+      roomState && !["LOBBY", "GAME_OVER"].includes(roomState.status);
+
     if (socket.connected) {
-      socket.emit("room:leave");
+      socket.emit("room:leave", (response) => {
+        if (response?.success && wasInActiveGame) {
+          trackEvent("game_abandoned", { reason: "player_left" });
+        }
+      });
     }
 
     clearSession();
+    roomStateRef.current = null;
     setRoomState(null);
     setErrorMessage("");
   }

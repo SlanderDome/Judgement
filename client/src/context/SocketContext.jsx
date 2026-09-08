@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { io } from "socket.io-client";
+import { trackEvent } from "../analytics.js";
 
 const SocketContext = createContext(null);
 
@@ -23,8 +24,11 @@ export function SocketProvider({ children }) {
       setIsConnected(true);
     }
 
-    function handleDisconnect() {
+    function handleDisconnect(reason) {
       setIsConnected(false);
+      trackEvent("player_disconnected", {
+        ...(reason ? { reason } : {})
+      });
     }
 
     socket.on("connect", handleConnect);

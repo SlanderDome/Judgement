@@ -144,15 +144,17 @@ export function registerSocketHandlers(io) {
       }
     });
 
-    socket.on("room:leave", () => {
+    socket.on("room:leave", (acknowledge) => {
       const disconnected = roomManager.disconnectSocket(socket.id);
       if (!disconnected) {
+        acknowledge?.({ success: false });
         return;
       }
 
       socket.leave(disconnected.room.roomId);
       emitRoomState(io, disconnected.room);
       scheduleRoomTimeout(io, disconnected.room.roomId);
+      acknowledge?.({ success: true });
     });
 
     socket.on("game:start", ({ roomId, playerId, cardsInRound, trumpSuit } = {}) => {
