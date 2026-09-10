@@ -15,6 +15,7 @@ export default function App() {
         {!roomState ? (
           <section className="lobby-grid">
             <div className="lobby-hero">
+              <p className="lobby-hero__kicker">A private table for friends</p>
               <h1>JUDGEMENT</h1>
               <p>Bid your tricks, land them exactly.</p>
             </div>

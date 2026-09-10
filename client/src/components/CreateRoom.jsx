@@ -15,6 +15,7 @@ export function CreateRoom({ onCreate, isConnected }) {
     <form className="panel panel--primary" onSubmit={handleSubmit}>
       <p className="eyebrow">Start a table</p>
       <h2>Create a private room</h2>
+      <p className="panel-intro">Choose a name, then share the room code with your players.</p>
       <label className="field">
         <span>Nickname</span>
         <input

@@ -16,6 +16,7 @@ export function JoinRoom({ onJoin, isConnected }) {
     <form className="panel panel--secondary" onSubmit={handleSubmit}>
       <p className="eyebrow">Already invited?</p>
       <h2>Join with a room code</h2>
+      <p className="panel-intro">Enter the six-character code from your host to take a seat.</p>
       <label className="field">
         <span>Room code</span>
         <input
