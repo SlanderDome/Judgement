@@ -17,7 +17,7 @@ const BID_TIMEOUT_MS = 30000;
 const PRE_BIDDING_TIMEOUT_MS = 30000;
 // The completed trick stays face-up for this long so everyone sees the last card
 // before it clears to the winner.
-const TRICK_REVEAL_MS = 10000;
+const TRICK_REVEAL_MS = 5000;
 // The scoreboard shows for this long, then the next round starts automatically.
 const ROUND_SUMMARY_MS = 5000;
 
@@ -169,7 +169,7 @@ export function startBidding(room) {
 }
 
 export function togglePause(room) {
-  if (![ROOM_STATUS.PRE_BIDDING, ROOM_STATUS.BIDDING, ROOM_STATUS.TRICK_PLAYING, ROOM_STATUS.TRICK_COMPLETE].includes(room.status)) {
+  if (![ROOM_STATUS.PRE_BIDDING, ROOM_STATUS.BIDDING, ROOM_STATUS.TRICK_PLAYING, ROOM_STATUS.TRICK_COMPLETE, ROOM_STATUS.ROUND_SUMMARY].includes(room.status)) {
     throw new Error("The game cannot be paused right now.");
   }
 
@@ -210,6 +210,20 @@ export function markPlayerDisconnected(room, socketId) {
 
   player.isOnline = false;
   player.socketId = null;
+  room.updatedAt = Date.now();
+  return player;
+}
+
+export function markPlayerLeft(room, playerId) {
+  const player = room.players.find((entry) => entry.playerId === playerId);
+
+  if (!player) {
+    return null;
+  }
+
+  player.isOnline = false;
+  player.socketId = null;
+  player.isActiveInGame = false;
   room.updatedAt = Date.now();
   return player;
 }
@@ -423,12 +437,14 @@ function resolveTrick(room) {
   const ring = getSeatedPlayers(room);
 
   if (roundComplete) {
-    ring.forEach((player) => {
+    ring.filter((player) => player.isActiveInGame).forEach((player) => {
       player.score += scorePlayerForRound(player);
     });
 
+    room.players = room.players.filter((player) => player.isActiveInGame);
+
     room.currentRound.roundSummary = {
-      scores: ring.map((player) => ({
+      scores: getSeatedPlayers(room).map((player) => ({
         playerId: player.playerId,
         nickname: player.nickname,
         score: player.score,
@@ -667,6 +683,22 @@ export function leaveSeat(room, playerId) {
   room.gameConfig.maxCards = getMaxCardsForPlayers(getSeatedPlayers(room).length || 1);
   room.updatedAt = Date.now();
   return room;
+}
+
+export function removePlayer(room, playerId) {
+  if (![ROOM_STATUS.LOBBY, ROOM_STATUS.ROUND_SUMMARY, ROOM_STATUS.GAME_OVER].includes(room.status)) {
+    throw new Error("Players can only be kicked between rounds.");
+  }
+
+  const playerIndex = room.players.findIndex((entry) => entry.playerId === playerId);
+  if (playerIndex < 0) {
+    throw new Error("That player is not in the room.");
+  }
+
+  const [player] = room.players.splice(playerIndex, 1);
+  room.gameConfig.maxCards = getMaxCardsForPlayers(getSeatedPlayers(room).length || 1);
+  room.updatedAt = Date.now();
+  return player;
 }
 
 export function reorderPlayers(room, orderedPlayerIds) {

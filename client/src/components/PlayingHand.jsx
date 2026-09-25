@@ -13,8 +13,10 @@ const SUIT_PIPS = {
 export function PlayingHand({ cards, isMyTurn, legalCardIds, onPlayCard, dropZoneRef, onDragStateChange, revealDeal = false }) {
   const [selectedCardId, setSelectedCardId] = useState(null);
   const [hoveredCardId, setHoveredCardId] = useState(null);
-  const [fan, setFan] = useState({ overlap: 0 });
+  const [fan, setFan] = useState({ overlap: 0, cardWidth: null, overflowing: false });
   const handRef = useRef(null);
+  const baseCardWidthRef = useRef(null);
+  const viewportWidthRef = useRef(typeof window === "undefined" ? 0 : window.innerWidth);
 
   const selectedCard = cards.find((card) => card.id === selectedCardId);
 
@@ -150,16 +152,33 @@ export function PlayingHand({ cards, isMyTurn, legalCardIds, onPlayCard, dropZon
       }
 
       const cardEl = container.querySelector(".playing-card");
-      const cardWidth = cardEl ? cardEl.getBoundingClientRect().width : 92;
+      if (window.innerWidth !== viewportWidthRef.current) {
+        viewportWidthRef.current = window.innerWidth;
+        baseCardWidthRef.current = null;
+      }
+      const measuredWidth = cardEl ? cardEl.getBoundingClientRect().width : 92;
+      const cardWidth = baseCardWidthRef.current ?? measuredWidth;
+      baseCardWidthRef.current ??= measuredWidth;
       const available = Math.max(0, container.clientWidth - 32);
       const count = Math.max(cards.length, 1);
 
-      const rawOverlap = count > 1 ? (cardWidth * count - available) / (count - 1) : 0;
-      // Cap overlap at 48% max so at least 52% (~48px) of every card's left face is visible
-      const maxAllowedOverlap = cardWidth * 0.48;
+      // Shrink cards until the hand fits while preserving enough of each card
+      // to identify it. Very large hands retain a scroll fallback instead of
+      // allowing cards to escape the viewport.
+      const minCardWidth = window.innerWidth <= 560 ? 48 : 64;
+      const fitWidth = count > 1 ? available / (0.52 * count + 0.48) : cardWidth;
+      const nextCardWidth = Math.max(minCardWidth, Math.min(cardWidth, fitWidth));
+      const rawOverlap = count > 1 ? (nextCardWidth * count - available) / (count - 1) : 0;
+      const maxAllowedOverlap = nextCardWidth * 0.48;
       const overlap = count > 1 ? Math.min(maxAllowedOverlap, Math.max(-6, rawOverlap)) : 0;
+      const totalWidth = nextCardWidth * count - overlap * Math.max(0, count - 1);
+      const isMobile = window.innerWidth <= 560;
+      const mobileRowCapacity = Math.max(4, Math.floor(available / 58));
+      const overflowing = isMobile
+        ? count > mobileRowCapacity
+        : totalWidth > available + 1;
 
-      setFan({ overlap });
+      setFan({ overlap, cardWidth: nextCardWidth, overflowing });
     }
 
     measure();
@@ -178,7 +197,11 @@ export function PlayingHand({ cards, isMyTurn, legalCardIds, onPlayCard, dropZon
 
   return (
     <section className="hand" aria-label="Your hand">
-      <div className="fan-hand" ref={handRef}>
+      <div
+        className={`fan-hand ${fan.overflowing ? "fan-hand--overflowing" : ""}`}
+        ref={handRef}
+        style={fan.cardWidth ? { "--hand-card-width": `${fan.cardWidth}px` } : undefined}
+      >
         <AnimatePresence mode="popLayout">
           {cards.map((card, index) => {
             const centerOffset = index - (cards.length - 1) / 2;

@@ -103,13 +103,13 @@ export function BiddingOverlay({ roomState, clientPlayerId, onSubmitBid }) {
 
   return (
     <motion.section
-      className={`bidding-panel ${isMyTurn ? "bidding-panel--action" : "bidding-panel--waiting"}`}
+      className={`bidding-panel bidding-panel--polished ${isMyTurn ? "bidding-panel--action" : "bidding-panel--waiting"}`}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.18, ease: "easeOut" }}
       aria-live="polite"
     >
-      <div className="bidding-head">
+      <div className="bidding-head bidding-panel__head">
         <div>
           <p className="eyebrow">Bidding</p>
           <h3>
@@ -122,7 +122,7 @@ export function BiddingOverlay({ roomState, clientPlayerId, onSubmitBid }) {
               : `${currentPlayer?.nickname ?? "Waiting"} is bidding`}
           </h3>
         </div>
-        <div className="bidding-head-right">
+        <div className="bidding-head-right bidding-panel__status">
           {secondsLeft != null && (
             <span
               className={`bid-timer ${urgency}`}
@@ -143,7 +143,7 @@ export function BiddingOverlay({ roomState, clientPlayerId, onSubmitBid }) {
       </div>
 
       {isMyTurn && (
-        <div className="bid-grid" aria-label="Choose your bid">
+        <div className="bid-grid bidding-panel__grid" aria-label="Choose your bid">
           {bidOptions.map((bid) => {
             const isForbidden = forbiddenBid !== null && bid === forbiddenBid;
             const isSelected = selectedBid === bid;

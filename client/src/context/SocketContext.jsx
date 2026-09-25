@@ -6,7 +6,7 @@ const SocketContext = createContext(null);
 
 const SERVER_URL =
   import.meta.env.VITE_SOCKET_URL ||
-  (import.meta.env.DEV ? "http://localhost:3001" : undefined);
+  (import.meta.env.DEV ? "http://127.0.0.1:3001" : undefined);
 
 const socket = io(SERVER_URL, {
   autoConnect: true
@@ -31,12 +31,19 @@ export function SocketProvider({ children }) {
       });
     }
 
+    function handleConnectError(error) {
+      setIsConnected(false);
+      console.error("Unable to connect to the game server", error.message);
+    }
+
     socket.on("connect", handleConnect);
     socket.on("disconnect", handleDisconnect);
+    socket.on("connect_error", handleConnectError);
 
     return () => {
       socket.off("connect", handleConnect);
       socket.off("disconnect", handleDisconnect);
+      socket.off("connect_error", handleConnectError);
     };
   }, []);
 

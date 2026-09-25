@@ -165,6 +165,13 @@ export function useGameState() {
       });
     }
 
+    function handleRoomKicked(payload) {
+      clearSession();
+      roomStateRef.current = null;
+      setRoomState(null);
+      setErrorMessage(payload.message || "The host removed you from the room.");
+    }
+
     function handleError(payload) {
       setErrorMessage(payload.message);
       if (
@@ -179,12 +186,14 @@ export function useGameState() {
     socket.on("room:state_update", handleRoomState);
     socket.on("room:created", handleRoomCreated);
     socket.on("room:joined", handleRoomJoined);
+    socket.on("room:kicked", handleRoomKicked);
     socket.on("game:error", handleError);
 
     return () => {
       socket.off("room:state_update", handleRoomState);
       socket.off("room:created", handleRoomCreated);
       socket.off("room:joined", handleRoomJoined);
+      socket.off("room:kicked", handleRoomKicked);
       socket.off("game:error", handleError);
     };
   }, [socket]);
@@ -253,7 +262,10 @@ export function useGameState() {
       roomState && !["LOBBY", "GAME_OVER"].includes(roomState.status);
 
     if (socket.connected) {
-      socket.emit("room:leave", (response) => {
+      socket.emit("room:leave", {
+        roomId: roomState?.roomId,
+        playerId: clientPlayerId
+      }, (response) => {
         if (response?.success && wasInActiveGame) {
           trackEvent("game_abandoned", { reason: "player_left" });
         }
@@ -286,6 +298,18 @@ export function useGameState() {
     socket.emit("seat:leave", {
       roomId: roomState.roomId,
       playerId: clientPlayerId
+    });
+  }
+
+  function kickPlayer(targetPlayerId) {
+    if (!roomState || !clientPlayerId || !targetPlayerId) {
+      return;
+    }
+
+    socket.emit("room:kick", {
+      roomId: roomState.roomId,
+      playerId: clientPlayerId,
+      targetPlayerId
     });
   }
 
@@ -381,6 +405,7 @@ export function useGameState() {
       leaveRoom,
       takeSeat,
       leaveSeat,
+      kickPlayer,
       startGame,
       startBidding,
       togglePause,

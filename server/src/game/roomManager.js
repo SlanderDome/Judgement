@@ -7,7 +7,9 @@ import {
   getBiddingContext,
   getSeatedPlayers,
   leaveSeat as leaveRoomSeat,
+  markPlayerLeft,
   markPlayerDisconnected,
+  removePlayer,
   reconnectPlayer,
   playCard,
   reorderPlayers as reorderRoomPlayers,
@@ -131,6 +133,44 @@ export class RoomManager {
 
     leaveRoomSeat(room, playerId);
     return room;
+  }
+
+  leaveRoom(roomId, playerId) {
+    const room = this.getRoom(roomId);
+
+    if (!room) {
+      throw new Error("Room not found.");
+    }
+
+    const player = room.players.find((entry) => entry.playerId === playerId);
+    if (!player) {
+      throw new Error("You are not in this room.");
+    }
+
+    if (["LOBBY", "ROUND_SUMMARY", "GAME_OVER"].includes(room.status)) {
+      return { room, player: removePlayer(room, playerId), removed: true };
+    }
+
+    return { room, player: markPlayerLeft(room, playerId), removed: false };
+  }
+
+  kickPlayer(roomId, adminPlayerId, targetPlayerId) {
+    const room = this.getRoom(roomId);
+
+    if (!room) {
+      throw new Error("Room not found.");
+    }
+
+    if (room.adminPlayerId !== adminPlayerId) {
+      throw new Error("Only the room admin can kick players.");
+    }
+
+    if (adminPlayerId === targetPlayerId) {
+      throw new Error("The room admin cannot be kicked.");
+    }
+
+    const player = removePlayer(room, targetPlayerId);
+    return { room, player };
   }
 
   startGame(roomId, playerId, options = {}) {

@@ -144,16 +144,35 @@ export function registerSocketHandlers(io) {
       }
     });
 
-    socket.on("room:leave", (acknowledge) => {
-      const disconnected = roomManager.disconnectSocket(socket.id);
-      if (!disconnected) {
+    socket.on("room:kick", ({ roomId, playerId, targetPlayerId } = {}) => {
+      try {
+        const { room, player } = roomManager.kickPlayer(roomId, playerId, targetPlayerId);
+        if (player.socketId) {
+          io.to(player.socketId).emit("room:kicked", {
+            message: "The host removed you from the room."
+          });
+          io.sockets.sockets.get(player.socketId)?.leave(room.roomId);
+        }
+        emitRoomState(io, room);
+        scheduleRoomTimeout(io, roomId);
+      } catch (error) {
+        emitError(socket, error.message, "KICK_REJECTED");
+      }
+    });
+
+    socket.on("room:leave", ({ roomId, playerId } = {}, acknowledge) => {
+      let leftRoom;
+      try {
+        leftRoom = roomManager.leaveRoom(roomId, playerId);
+      } catch (error) {
+        emitError(socket, error.message, "LEAVE_REJECTED");
         acknowledge?.({ success: false });
         return;
       }
 
-      socket.leave(disconnected.room.roomId);
-      emitRoomState(io, disconnected.room);
-      scheduleRoomTimeout(io, disconnected.room.roomId);
+      socket.leave(leftRoom.room.roomId);
+      emitRoomState(io, leftRoom.room);
+      scheduleRoomTimeout(io, leftRoom.room.roomId);
       acknowledge?.({ success: true });
     });
 

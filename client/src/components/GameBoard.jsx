@@ -70,6 +70,7 @@ export function GameBoard({
   onSubmitBid,
   onPlayCard,
   onTakeSeat,
+  onKickPlayer,
   onNextRound,
   onRematch,
   onLeaveRoom
@@ -100,6 +101,7 @@ export function GameBoard({
   const status = roomState.status;
   const isLobby = status === "LOBBY";
   const isPreBidding = status === "PRE_BIDDING";
+  const isBidding = status === "BIDDING";
   const isPlaying = status === "TRICK_PLAYING";
   const isTrickComplete = status === "TRICK_COMPLETE";
   const isSummary = status === "ROUND_SUMMARY";
@@ -159,6 +161,12 @@ export function GameBoard({
   // Bidding auto-starts after a countdown, so the host has nothing to do during
   // PRE_BIDDING — the panel is only for the lobby and between-round setup.
   const canOpenHostPanel = isAdmin && !isGameOver;
+  function openHostControls() {
+    if (isSummary && !roomState.paused) {
+      onTogglePause();
+    }
+    setAdminOpen(true);
+  }
   const timerEndsAt = roomState.timer?.endsAt ?? null;
   const timerDurationMs = roomState.timer?.durationMs ?? null;
   const seatedCount = seatedPlayers(roomState).length;
@@ -193,6 +201,10 @@ export function GameBoard({
         Cards dealt — bidding starts automatically
       </div>
     )
+  ) : isBidding ? (
+    <div className="table-center-bidding">
+      <BiddingOverlay roomState={roomState} clientPlayerId={clientPlayerId} onSubmitBid={onSubmitBid} />
+    </div>
   ) : (
     <TrickTable
       roomState={roomState}
@@ -209,7 +221,7 @@ export function GameBoard({
       } ${isPaused ? "game-layout--paused" : ""}`}
     >
       <header className="game-header">
-        <div className="game-header-meta">
+        <div className="game-header-meta game-header__meta">
           <RoomCodeButton roomId={roomState.roomId} />
           {isLobby ? (
             <>
@@ -238,7 +250,7 @@ export function GameBoard({
             </>
           )}
         </div>
-        <div className="game-header-actions">
+        <div className="game-header-actions game-header__actions">
           <SoundToggle />
           <ConnectionBadge isConnected={isConnected} />
           <span className={`gh-item gh-state gh-state--${phaseLabel.toLowerCase().replace(/\s+/g, "-")}`} aria-label={`Phase ${phaseLabel}, ${turnLabel}`}>
@@ -254,7 +266,7 @@ export function GameBoard({
             Main menu
           </button>
           {canOpenHostPanel && (
-            <button type="button" className="btn-ghost btn-sm" onClick={() => setAdminOpen(true)}>
+            <button type="button" className="btn-ghost btn-sm" onClick={openHostControls}>
               Host controls
             </button>
           )}
@@ -298,7 +310,6 @@ export function GameBoard({
             isDealing ? "is-dealing" : ""
           } ${isDragging ? "is-dragging" : ""}`}
         >
-          <BiddingOverlay roomState={roomState} clientPlayerId={clientPlayerId} onSubmitBid={onSubmitBid} />
           <PlayingHand
             key={revealKey}
             cards={hand}
@@ -326,7 +337,7 @@ export function GameBoard({
                   </strong>
                 </span>
                 {isAdmin && (
-                  <button type="button" className="btn-primary" onClick={() => setAdminOpen(true)}>
+                  <button type="button" className="btn-primary" onClick={openHostControls}>
                     Start now
                   </button>
                 )}
@@ -374,9 +385,10 @@ export function GameBoard({
               onStartGame={onStartGame}
               onStartBidding={onStartBidding}
               onTogglePause={onTogglePause}
-            onNextRound={onNextRound}
-            onClose={() => setAdminOpen(false)}
-          />
+              onKickPlayer={onKickPlayer}
+              onNextRound={onNextRound}
+              onClose={() => setAdminOpen(false)}
+            />
         </motion.div>
       )}
 
