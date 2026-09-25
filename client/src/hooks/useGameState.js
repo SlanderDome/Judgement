@@ -38,6 +38,24 @@ function clearSession() {
   window.localStorage.removeItem(SESSION_STORAGE_KEY);
 }
 
+function getClientTimerState(roomState, serverNow) {
+  const endsAt = roomState?.timer?.endsAt;
+  if (!endsAt || !serverNow) {
+    return roomState;
+  }
+
+  // Convert the server epoch timestamp into the local clock's coordinate system
+  // so every client displays the same remaining time despite clock skew.
+  const serverClockOffset = serverNow - Date.now();
+  return {
+    ...roomState,
+    timer: {
+      ...roomState.timer,
+      endsAt: endsAt - serverClockOffset
+    }
+  };
+}
+
 export function useGameState() {
   const { socket, isConnected } = useSocket();
   const [roomState, setRoomState] = useState(null);
@@ -82,7 +100,7 @@ export function useGameState() {
 
   useEffect(() => {
     function handleRoomState(payload) {
-      const nextRoomState = payload.roomState;
+      const nextRoomState = getClientTimerState(payload.roomState, payload.serverNow);
       const previousRoomState = roomStateRef.current;
 
       if (nextRoomState) {

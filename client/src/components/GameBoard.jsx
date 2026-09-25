@@ -241,7 +241,12 @@ export function GameBoard({
               </span>
               <span className="gh-dot" aria-hidden="true">·</span>
               <span className="gh-item">
-                {roomState.gameConfig.phase === "ASCENDING" ? "Ascending" : "Descending"}{" "}
+                <span
+                  className="round-direction"
+                  aria-label={roomState.gameConfig.phase === "ASCENDING" ? "Ascending" : "Descending"}
+                >
+                  {roomState.gameConfig.phase === "ASCENDING" ? "↑" : "↓"}
+                </span>{" "}
                 <strong>{roomState.gameConfig.cardsInRound}</strong>{" "}
                 {roomState.gameConfig.cardsInRound === 1 ? "card" : "cards"}
               </span>

@@ -12,7 +12,8 @@ function emitRoomState(io, room) {
 
     io.to(player.socketId).emit("room:state_update", {
       roomState: roomManager.getSanitizedRoom(room.roomId, player.playerId),
-      clientPlayerId: player.playerId
+      clientPlayerId: player.playerId,
+      serverNow: Date.now()
     });
   });
 }

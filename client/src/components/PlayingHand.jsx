@@ -165,7 +165,7 @@ export function PlayingHand({ cards, isMyTurn, legalCardIds, onPlayCard, dropZon
       // Shrink cards until the hand fits while preserving enough of each card
       // to identify it. Very large hands retain a scroll fallback instead of
       // allowing cards to escape the viewport.
-      const minCardWidth = window.innerWidth <= 560 ? 48 : 64;
+      const minCardWidth = window.innerWidth <= 560 ? 68 : 64;
       const fitWidth = count > 1 ? available / (0.52 * count + 0.48) : cardWidth;
       const nextCardWidth = Math.max(minCardWidth, Math.min(cardWidth, fitWidth));
       const rawOverlap = count > 1 ? (nextCardWidth * count - available) / (count - 1) : 0;
