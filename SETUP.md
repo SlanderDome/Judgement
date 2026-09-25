@@ -43,7 +43,7 @@ npm run dev:client
 ## Ports
 
 - Server: `http://localhost:3001`
-- Client: `http://localhost:3000`
+- Client: `http://localhost:5173`
 
 ## Useful commands
 

@@ -51,7 +51,7 @@ Judgement/
    ```
 
 The backend listens on `http://localhost:3001` and the client dev server on `http://localhost:5173`.
-The client connects to the backend via `VITE_SOCKET_URL` (defaults to `http://localhost:3001` in dev); see `client/.env.example`.
+The client connects to the backend via `VITE_SOCKET_URL` (defaults to `http://127.0.0.1:3001` in dev); see `client/.env.example`.
 
 ## Current Scope
 

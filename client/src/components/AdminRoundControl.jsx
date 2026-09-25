@@ -8,7 +8,7 @@ const SUITS = [
   { key: "HEARTS", label: "Hearts", pip: "♥", red: true }
 ];
 
-export function AdminRoundControl({ roomState, onStartGame, onStartBidding, onTogglePause, onNextRound, onClose }) {
+export function AdminRoundControl({ roomState, onStartGame, onStartBidding, onTogglePause, onKickPlayer, onNextRound, onClose }) {
   const isLobby = roomState.status === "LOBBY";
   const isSummary = roomState.status === "ROUND_SUMMARY";
   const canConfigure = isLobby || isSummary;
@@ -16,12 +16,14 @@ export function AdminRoundControl({ roomState, onStartGame, onStartBidding, onTo
   const canPause = !isLobby && !isSummary && roomState.status !== "GAME_OVER";
 
   const ring = seatedPlayers(roomState);
+  const players = roomState.players ?? [];
   const seatedPlayersCount = ring.length || 1;
   const maxAllowedCards = Math.max(1, Math.floor(52 / seatedPlayersCount));
 
   const defaultCards = isLobby ? 1 : Math.min(roomState.gameConfig.cardsInRound + 1, maxAllowedCards);
   const [cardsInRound, setCardsInRound] = useState(defaultCards);
   const [selectedSuit, setSelectedSuit] = useState(roomState.gameConfig.trumpSuit ?? "SPADES");
+  const [pendingKickId, setPendingKickId] = useState(null);
 
   function handleDecrement() {
     setCardsInRound((prev) => Math.max(1, prev - 1));
@@ -45,6 +47,16 @@ export function AdminRoundControl({ roomState, onStartGame, onStartBidding, onTo
     onClose?.();
   }
 
+  function handleKick(playerId) {
+    if (pendingKickId === playerId) {
+      onKickPlayer?.(playerId);
+      setPendingKickId(null);
+      return;
+    }
+
+    setPendingKickId(playerId);
+  }
+
   const title = isLobby ? "Start the first round" : "Configure next round";
   const primaryLabel = isLobby ? "Start game" : `Start round ${roomState.gameConfig.roundNumber + 1}`;
 
@@ -64,8 +76,12 @@ export function AdminRoundControl({ roomState, onStartGame, onStartBidding, onTo
 
       {canConfigure && (
         <>
-          <div className="control-section">
-            <span className="control-label">Cards for next round (max {maxAllowedCards})</span>
+          <div className="control-section admin-section admin-section--round">
+            <div className="admin-section__heading">
+              <span className="control-label">Round setup</span>
+              <span className="admin-section__hint">Up to {maxAllowedCards} cards</span>
+            </div>
+            <span className="control-label control-label--subtle">Cards for next round</span>
             <div className="stepper">
               <button type="button" className="btn-ghost" onClick={handleDecrement} disabled={cardsInRound <= 1}>
                 −
@@ -77,7 +93,7 @@ export function AdminRoundControl({ roomState, onStartGame, onStartBidding, onTo
             </div>
           </div>
 
-          <div className="control-section">
+          <div className="control-section admin-section admin-section--suit">
             <span className="control-label">Trump suit</span>
             <div className="suit-row">
               {SUITS.map((suit) => (
@@ -96,24 +112,38 @@ export function AdminRoundControl({ roomState, onStartGame, onStartBidding, onTo
       )}
 
       {canConfigure && (
-      <div className="control-section admin-players-section">
-        <span className="control-label">Seated players</span>
+      <div className="control-section admin-section admin-players-section">
+        <span className="control-label">Players in room</span>
         <div className="order-list">
-          {ring.map((player) => (
+          {players.map((player) => (
             <div key={player.playerId} className="order-row">
-              <span className="order-pos">{player.seatIndex + 1}</span>
+              <span className="order-pos">{player.seatIndex == null ? "-" : player.seatIndex + 1}</span>
               <span className="order-name">
                 {player.nickname}
-                {player.playerId === roomState.adminPlayerId ? " · host" : ""}
+                {player.playerId === roomState.adminPlayerId
+                  ? " · host"
+                  : player.seatIndex == null
+                    ? " · spectator"
+                    : ""}
               </span>
+              {(isLobby || isSummary) && player.playerId !== roomState.adminPlayerId && (
+                <button
+                  type="button"
+                  className={`kick-button ${pendingKickId === player.playerId ? "is-confirming" : ""}`}
+                  onClick={() => handleKick(player.playerId)}
+                  aria-label={pendingKickId === player.playerId ? `Confirm kick ${player.nickname}` : `Kick ${player.nickname}`}
+                >
+                  {pendingKickId === player.playerId ? "Confirm" : "Kick"}
+                </button>
+              )}
             </div>
           ))}
-          {ring.length === 0 && <p className="control-hint">Nobody has taken a seat yet.</p>}
+          {players.length === 0 && <p className="control-hint">Nobody is in the room yet.</p>}
         </div>
       </div>
       )}
 
-      <div className="control-actions">
+      <div className="control-actions admin-actions">
         {canConfigure && (
           <button type="button" className="btn-primary" onClick={handlePrimary}>
             {primaryLabel}
