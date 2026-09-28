@@ -79,6 +79,7 @@ export function GameBoard({
 
   const [adminOpen, setAdminOpen] = useState(false);
   const [leaveOpen, setLeaveOpen] = useState(false);
+  const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const dropZoneRef = useRef(null);
 
@@ -214,6 +215,8 @@ export function GameBoard({
     />
   );
 
+  const statusClass = `gh-state gh-state--${phaseLabel.toLowerCase().replace(/\s+/g, "-")}`;
+
   return (
     <div
       className={`game-layout game-layout--${status.toLowerCase().replace(/_/g, "-")} ${
@@ -277,6 +280,75 @@ export function GameBoard({
           )}
         </div>
       </header>
+
+      <header className="mobile-game-header">
+        <div className="mobile-game-header__top">
+          <RoomCodeButton roomId={roomState.roomId} />
+          <div className="mobile-game-header__round" aria-label={isLobby ? `${seatedCount} of ${seatCap} seated` : `Round ${roomState.gameConfig.roundNumber}`}>
+            {isLobby ? (
+              <strong>{seatedCount}/{seatCap} seated</strong>
+            ) : (
+              <>
+                <span>Round <strong>{roomState.gameConfig.roundNumber}</strong></span>
+                <span aria-hidden="true">·</span>
+                <span>
+                  <span
+                    className="round-direction"
+                    aria-label={roomState.gameConfig.phase === "ASCENDING" ? "Ascending" : "Descending"}
+                  >
+                    {roomState.gameConfig.phase === "ASCENDING" ? "↑" : "↓"}
+                  </span>{" "}
+                  <strong>{roomState.gameConfig.cardsInRound}</strong>
+                </span>
+              </>
+            )}
+          </div>
+          <div className="mobile-game-header__tools">
+            <SoundToggle />
+            <ConnectionBadge isConnected={isConnected} />
+            <button
+              type="button"
+              className="mobile-menu-trigger"
+              aria-label="Open game menu"
+              aria-expanded={mobileActionsOpen}
+              onClick={() => setMobileActionsOpen((open) => !open)}
+            >
+              <span aria-hidden="true">•••</span>
+            </button>
+          </div>
+        </div>
+        <div className={`${statusClass} mobile-game-header__status`} aria-label={`Phase ${phaseLabel}, ${turnLabel}`}>
+          <strong>{phaseLabel}</strong>
+          {turnLabel !== phaseLabel && <span>{turnLabel}</span>}
+        </div>
+      </header>
+
+      {mobileActionsOpen && (
+        <div className="mobile-actions-backdrop" role="presentation" onClick={() => setMobileActionsOpen(false)}>
+          <div className="mobile-actions-sheet" role="dialog" aria-label="Game menu" onClick={(event) => event.stopPropagation()}>
+            <div className="mobile-actions-sheet__handle" aria-hidden="true" />
+            <div className="mobile-actions-sheet__head">
+              <strong>Game menu</strong>
+              <button type="button" className="mobile-actions-sheet__close" onClick={() => setMobileActionsOpen(false)} aria-label="Close game menu">
+                ×
+              </button>
+            </div>
+            {isAdmin && isPreBidding && (
+              <button type="button" className="btn-primary" onClick={() => { setMobileActionsOpen(false); onStartBidding(); }}>
+                Start bidding now
+              </button>
+            )}
+            <button type="button" className="btn-ghost" onClick={() => { setMobileActionsOpen(false); setLeaveOpen(true); }}>
+              Main menu
+            </button>
+            {canOpenHostPanel && (
+              <button type="button" className="btn-ghost" onClick={() => { setMobileActionsOpen(false); openHostControls(); }}>
+                Host controls
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="table-wrap">
         <CircularTable
