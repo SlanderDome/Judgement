@@ -300,6 +300,7 @@ export function GameBoard({
                   </span>{" "}
                   <strong>{roomState.gameConfig.cardsInRound}</strong>
                 </span>
+                <TrumpIndicator roomState={roomState} />
               </>
             )}
           </div>

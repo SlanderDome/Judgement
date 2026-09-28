@@ -2480,6 +2480,20 @@ input:focus {
     font-variant-numeric: tabular-nums;
   }
 
+  .mobile-game-header__round .trump-tag {
+    flex: 0 0 auto;
+    padding: 0.28rem 0.45rem;
+    font-size: 0.68rem;
+  }
+
+  .mobile-game-header__round .trump-label {
+    display: none;
+  }
+
+  .mobile-game-header__round .trump-pip {
+    font-size: 0.95rem;
+  }
+
   .mobile-game-header__tools {
     display: flex;
     align-items: center;
@@ -2597,6 +2611,10 @@ input:focus {
 
   .mobile-game-header {
     font-size: 0.74rem;
+  }
+
+  .table-lobby-note {
+    display: none;
   }
 
   .game-header .gh-dot {
