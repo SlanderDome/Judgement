@@ -24,6 +24,7 @@ export function AdminRoundControl({ roomState, onStartGame, onStartBidding, onTo
   const [cardsInRound, setCardsInRound] = useState(defaultCards);
   const [selectedSuit, setSelectedSuit] = useState(roomState.gameConfig.trumpSuit ?? "SPADES");
   const [pendingKickId, setPendingKickId] = useState(null);
+  const [playersOpen, setPlayersOpen] = useState(false);
 
   function handleDecrement() {
     setCardsInRound((prev) => Math.max(1, prev - 1));
@@ -113,8 +114,11 @@ export function AdminRoundControl({ roomState, onStartGame, onStartBidding, onTo
 
       {canConfigure && (
       <div className="control-section admin-section admin-players-section">
-        <span className="control-label">Players in room</span>
-        <div className="order-list">
+        <button type="button" className="admin-players-toggle" onClick={() => setPlayersOpen((open) => !open)} aria-expanded={playersOpen}>
+          <span className="control-label">Players in room</span>
+          <span>{players.length} {players.length === 1 ? "player" : "players"} {playersOpen ? "−" : "+"}</span>
+        </button>
+        <div className={`order-list admin-players-list ${playersOpen ? "is-open" : ""}`}>
           {players.map((player) => (
             <div key={player.playerId} className="order-row">
               <span className="order-pos">{player.seatIndex == null ? "-" : player.seatIndex + 1}</span>

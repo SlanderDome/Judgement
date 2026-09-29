@@ -2334,6 +2334,13 @@ input:focus {
 /* ---------- Responsive ---------- */
 
 @media (max-width: 860px) {
+  .table-lobby-note,
+  .poker-table__center .trick-reveal,
+  .poker-table__center .last-trick,
+  .poker-table__center .bidding-panel--waiting {
+    display: none;
+  }
+
   .lobby-grid {
     grid-template-columns: 1fr;
     max-width: 620px;
@@ -2417,7 +2424,7 @@ input:focus {
   }
 }
 
-@media (max-width: 560px) {
+@media (max-width: 860px) {
   .app-shell {
     padding: 0 10px 12px;
   }
@@ -2450,72 +2457,64 @@ input:focus {
 
   .mobile-game-header__top {
     display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    min-width: 0;
-  }
-
-  .mobile-game-header__top .room-code-btn {
-    flex: 0 1 auto;
-    min-width: 0;
-    max-width: 7rem;
-    padding: 0.38rem 0.5rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .mobile-game-header__round {
-    display: flex;
-    align-items: center;
+    align-items: stretch;
     gap: 0.35rem;
     min-width: 0;
-    color: var(--ivory-soft);
-    font-size: 0.74rem;
+  }
+
+  .mobile-game-header__metric {
+    display: flex;
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 48px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.12rem;
+    border: 1px solid rgba(246, 239, 225, 0.1);
+    border-radius: 10px;
+    background: rgba(246, 239, 225, 0.045);
+    text-align: center;
+  }
+
+  .mobile-game-header__metric > span:first-child {
+    color: var(--ivory-mute);
+    font-size: 0.56rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+
+  .mobile-game-header__metric > strong {
+    min-width: 0;
+    color: var(--gold-light);
+    font-size: 0.92rem;
+    line-height: 1.1;
     white-space: nowrap;
   }
 
-  .mobile-game-header__round strong {
-    color: var(--gold-light);
-    font-variant-numeric: tabular-nums;
+  .mobile-game-header__metric .trump-tag {
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
   }
 
-  .mobile-game-header__round .trump-tag {
-    flex: 0 0 auto;
-    padding: 0.28rem 0.45rem;
-    font-size: 0.68rem;
-  }
-
-  .mobile-game-header__round .trump-label {
+  .mobile-game-header__metric .trump-label {
     display: none;
   }
 
-  .mobile-game-header__round .trump-pip {
-    font-size: 0.95rem;
+  .mobile-game-header__metric .trump-pip {
+    font-size: 1rem;
   }
 
-  .mobile-game-header__tools {
-    display: flex;
-    align-items: center;
-    gap: 0.2rem;
-    margin-left: auto;
-  }
-
-  .mobile-game-header__tools .sound-toggle,
-  .mobile-game-header__tools .connection-dot-badge,
   .mobile-menu-trigger {
-    min-width: 36px;
-    min-height: 36px;
-    padding: 0.3rem;
+    flex: 0 0 44px;
+    min-width: 44px;
+    min-height: 48px;
+    padding: 0.3rem 0;
     justify-content: center;
-  }
-
-  .mobile-game-header__tools .sound-toggle {
-    display: inline-flex;
-  }
-
-  .mobile-game-header__tools .connection-dot-badge {
-    display: inline-flex;
   }
 
   .mobile-menu-trigger {
@@ -2592,6 +2591,24 @@ input:focus {
     color: var(--ivory);
   }
 
+  .mobile-actions-sheet > .room-code-btn {
+    width: 100%;
+    justify-content: center;
+    min-height: 46px;
+  }
+
+  .mobile-actions-sheet__utility-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  .mobile-actions-sheet__utility-row .sound-toggle,
+  .mobile-actions-sheet__utility-row .connection-dot-badge {
+    min-height: 42px;
+  }
+
   .mobile-actions-sheet__close {
     min-width: 40px;
     min-height: 40px;
@@ -2607,26 +2624,6 @@ input:focus {
   .mobile-actions-sheet .btn-ghost,
   .mobile-actions-sheet .btn-primary {
     min-height: 46px;
-  }
-
-  .mobile-game-header {
-    font-size: 0.74rem;
-  }
-
-  .table-lobby-note {
-    display: none;
-  }
-
-  .game-header .gh-dot {
-    display: none;
-  }
-
-  .connection-text {
-    display: none;
-  }
-
-  .connection-dot-badge {
-    padding: 0.3rem;
   }
 
   .seat-name {
@@ -3329,12 +3326,97 @@ input:focus {
   margin-bottom: 0.65rem;
 }
 
+.admin-players-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  color: var(--ivory-soft);
+  background: transparent;
+  text-align: left;
+  cursor: default;
+}
+
+.admin-players-toggle .control-label {
+  margin: 0;
+}
+
+.admin-players-toggle > span:last-child {
+  display: none;
+}
+
+.admin-players-list {
+  display: block;
+}
+
 .admin-card .admin-section__hint {
   color: rgba(246, 239, 225, 0.48);
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+
+@media (max-width: 860px) {
+  .overlay--admin {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .overlay--admin .admin-card {
+    width: 100%;
+    max-height: min(92dvh, 760px);
+    border-radius: 20px 20px 0 0;
+    padding: 1rem;
+  }
+
+  .admin-card .overlay-head {
+    position: sticky;
+    top: -1rem;
+    z-index: 2;
+    margin: -1rem -1rem 0;
+    padding: 1rem;
+    background: linear-gradient(180deg, rgba(18, 57, 45, 0.99), rgba(18, 57, 45, 0.94));
+  }
+
+  .admin-card .admin-players-toggle {
+    min-height: 44px;
+    padding: 0.1rem 0;
+    cursor: pointer;
+  }
+
+  .admin-card .admin-players-toggle > span:last-child {
+    display: inline-block;
+    color: var(--ivory-mute);
+    font-size: 0.72rem;
+    font-weight: 700;
+  }
+
+  .admin-card .admin-players-list {
+    display: none;
+  }
+
+  .admin-card .admin-players-list.is-open {
+    display: block;
+  }
+
+  .admin-card .admin-actions {
+    position: sticky;
+    bottom: -1rem;
+    z-index: 2;
+    margin: 0 -1rem -1rem;
+    padding: 0.8rem 1rem max(0.8rem, env(safe-area-inset-bottom, 0px));
+    background: linear-gradient(0deg, rgba(4, 20, 15, 1), rgba(4, 20, 15, 0.94));
+  }
+
+  .admin-card .admin-actions > button {
+    flex: 1 1 100%;
+    min-height: 46px;
+  }
 }
 
 .admin-card .control-label {

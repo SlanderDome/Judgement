@@ -283,40 +283,29 @@ export function GameBoard({
 
       <header className="mobile-game-header">
         <div className="mobile-game-header__top">
-          <RoomCodeButton roomId={roomState.roomId} />
-          <div className="mobile-game-header__round" aria-label={isLobby ? `${seatedCount} of ${seatCap} seated` : `Round ${roomState.gameConfig.roundNumber}`}>
-            {isLobby ? (
-              <strong>{seatedCount}/{seatCap} seated</strong>
-            ) : (
-              <>
-                <span>Round <strong>{roomState.gameConfig.roundNumber}</strong></span>
-                <span aria-hidden="true">·</span>
-                <span>
-                  <span
-                    className="round-direction"
-                    aria-label={roomState.gameConfig.phase === "ASCENDING" ? "Ascending" : "Descending"}
-                  >
-                    {roomState.gameConfig.phase === "ASCENDING" ? "↑" : "↓"}
-                  </span>{" "}
-                  <strong>{roomState.gameConfig.cardsInRound}</strong>
-                </span>
-                <TrumpIndicator roomState={roomState} />
-              </>
-            )}
+          <div className="mobile-game-header__metric">
+            <span>Round</span>
+            <strong>{isLobby ? "—" : roomState.gameConfig.roundNumber}</strong>
           </div>
-          <div className="mobile-game-header__tools">
-            <SoundToggle />
-            <ConnectionBadge isConnected={isConnected} />
-            <button
-              type="button"
-              className="mobile-menu-trigger"
-              aria-label="Open game menu"
-              aria-expanded={mobileActionsOpen}
-              onClick={() => setMobileActionsOpen((open) => !open)}
-            >
-              <span aria-hidden="true">•••</span>
-            </button>
+          <div className="mobile-game-header__metric">
+            <span>Cards</span>
+            <strong>
+              {isLobby ? "—" : <><span aria-label={roomState.gameConfig.phase === "ASCENDING" ? "Ascending" : "Descending"}>{roomState.gameConfig.phase === "ASCENDING" ? "↑" : "↓"}</span> {roomState.gameConfig.cardsInRound}</>}
+            </strong>
           </div>
+          <div className="mobile-game-header__metric">
+            <span>Trump</span>
+            <strong><TrumpIndicator roomState={roomState} /></strong>
+          </div>
+          <button
+            type="button"
+            className="mobile-menu-trigger"
+            aria-label="Open game menu"
+            aria-expanded={mobileActionsOpen}
+            onClick={() => setMobileActionsOpen((open) => !open)}
+          >
+            <span aria-hidden="true">•••</span>
+          </button>
         </div>
         <div className={`${statusClass} mobile-game-header__status`} aria-label={`Phase ${phaseLabel}, ${turnLabel}`}>
           <strong>{phaseLabel}</strong>
@@ -334,9 +323,19 @@ export function GameBoard({
                 ×
               </button>
             </div>
+            <RoomCodeButton roomId={roomState.roomId} />
+            <div className="mobile-actions-sheet__utility-row">
+              <SoundToggle />
+              <ConnectionBadge isConnected={isConnected} />
+            </div>
             {isAdmin && isPreBidding && (
               <button type="button" className="btn-primary" onClick={() => { setMobileActionsOpen(false); onStartBidding(); }}>
                 Start bidding now
+              </button>
+            )}
+            {isAdmin && !isLobby && !isGameOver && !isSummary && (
+              <button type="button" className="btn-ghost" onClick={() => { setMobileActionsOpen(false); onTogglePause(); }}>
+                {isPaused ? "Resume game" : "Pause game"}
               </button>
             )}
             <button type="button" className="btn-ghost" onClick={() => { setMobileActionsOpen(false); setLeaveOpen(true); }}>
