@@ -98,6 +98,7 @@ export function GameBoard({
   const players = roomState.players;
   const clientPlayer = players.find((player) => player.playerId === clientPlayerId);
   const clientSeated = isSeated(clientPlayer);
+  const clientActive = clientPlayer?.isActiveInGame !== false;
   const isAdmin = roomState.adminPlayerId === clientPlayerId;
   const status = roomState.status;
   const isLobby = status === "LOBBY";
@@ -160,7 +161,7 @@ export function GameBoard({
   );
 
   // Bidding auto-starts after a countdown, so the host has nothing to do during
-  // PRE_BIDDING — the panel is only for the lobby and between-round setup.
+  // PRE_BIDDING. The panel is only for the lobby and between-round setup.
   const canOpenHostPanel = isAdmin && !isGameOver;
   function openHostControls() {
     if (isSummary && !roomState.paused) {
@@ -193,13 +194,13 @@ export function GameBoard({
     </div>
   ) : isPreBidding ? (
     isDealing ? (
-      <div className="table-lobby-note table-lobby-note--dealing">Dealing…</div>
+      <div className="table-lobby-note table-lobby-note--dealing">Dealing</div>
     ) : (
       <div className="table-lobby-note">
         <strong>
           <Seconds endsAt={timerEndsAt} />s
         </strong>
-        Cards dealt — bidding starts automatically
+        Cards dealt. Bidding starts automatically
       </div>
     )
   ) : isBidding ? (
@@ -223,8 +224,9 @@ export function GameBoard({
         isDealing ? "game-layout--dealing" : ""
       } ${isPaused ? "game-layout--paused" : ""}`}
     >
-      <header className="game-header">
-        <div className="game-header-meta game-header__meta">
+        <header className="game-header">
+          <span className="room-mark room-mark--brand">JUDGEMENT</span>
+          <div className="game-header-meta game-header__meta">
           <RoomCodeButton roomId={roomState.roomId} />
           {isLobby ? (
             <>
@@ -282,15 +284,16 @@ export function GameBoard({
       </header>
 
       <header className="mobile-game-header">
+        <span className="room-mark room-mark--brand">JUDGEMENT</span>
         <div className="mobile-game-header__top">
           <div className="mobile-game-header__metric">
             <span>Round</span>
-            <strong>{isLobby ? "—" : roomState.gameConfig.roundNumber}</strong>
+            <strong>{isLobby ? "-" : roomState.gameConfig.roundNumber}</strong>
           </div>
           <div className="mobile-game-header__metric">
             <span>Cards</span>
             <strong>
-              {isLobby ? "—" : <><span aria-label={roomState.gameConfig.phase === "ASCENDING" ? "Ascending" : "Descending"}>{roomState.gameConfig.phase === "ASCENDING" ? "↑" : "↓"}</span> {roomState.gameConfig.cardsInRound}</>}
+              {isLobby ? "-" : <><span aria-label={roomState.gameConfig.phase === "ASCENDING" ? "Ascending" : "Descending"}>{roomState.gameConfig.phase === "ASCENDING" ? "↑" : "↓"}</span> {roomState.gameConfig.cardsInRound}</>}
             </strong>
           </div>
           <div className="mobile-game-header__metric">
@@ -354,7 +357,7 @@ export function GameBoard({
         <CircularTable
           roomState={roomState}
           clientPlayerId={clientPlayerId}
-          canSit={isLobby}
+           canSit={!isGameOver && (!clientSeated || isLobby)}
           isSeated={clientSeated}
           dealerPlayerId={showDealerId}
           currentTurnPlayerId={activeTurnId}
@@ -367,21 +370,25 @@ export function GameBoard({
         />
       </div>
 
-      {clientPlayer && !clientSeated && (
+      {clientPlayer && (!clientSeated || !clientActive) && (
         <div className="spectator-bar">
-          {isLobby
-            ? "You're watching — tap an open seat to join the game."
-            : "You're watching this match. Seats open up when the game returns to the lobby."}
+          {!clientSeated
+            ? isLobby
+              ? "You're watching. Tap an open seat to join the game."
+              : "You're watching this match. Tap an open seat to join next round."
+            : !clientActive
+              ? "You're seated. Your cards join next round."
+              : null}
         </div>
       )}
 
       {clientPlayer && clientSeated && isLobby && (
         <div className="spectator-bar">
-          You're seated. Waiting for the host to start the game…
+          You're seated. Waiting for the host to start the game.
         </div>
       )}
 
-      {clientPlayer && clientSeated && !isLobby && (
+      {clientPlayer && clientSeated && clientActive && !isLobby && (
         <div
           className={`self-area self-area--${status.toLowerCase().replace(/_/g, "-")} ${
             isDealing ? "is-dealing" : ""

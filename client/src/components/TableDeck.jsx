@@ -5,7 +5,7 @@ import { dealerPlayer, isRoundActive, seatDisplaySlot, seatUnitVector, seatedPla
 export const DEAL_MS = 2500;
 
 // How far from centre (as % of the table) the deck sits at the dealer, and
-// where dealt cards land — on the felt in front of the seat ring, not on top of
+// where dealt cards land. On the felt in front of the seat ring, not on top of
 // the dealer's avatar.
 const DEALER_RADIUS = 30;
 const LAND_RADIUS = 38;
@@ -15,7 +15,7 @@ const REST_LEFT = 24;
 const REST_TOP = 30;
 
 const STACK = 4;
-// Cap the number of animated cards regardless of hand size — it just needs to
+// Cap the number of animated cards regardless of hand size. It just needs to
 // read as "cards going around". Keeps big rounds from spawning 40+ motion nodes.
 const MAX_FLIGHTS = 24;
 

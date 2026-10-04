@@ -27,7 +27,7 @@ export function BiddingOverlay({ roomState, clientPlayerId, onSubmitBid }) {
   const durationMs = roomState.timer?.durationMs ?? 30000;
   const remainingMs = useCountdown(endsAt);
 
-  // Keyboard: number keys 0–9 submit that bid, exactly like clicking the chip.
+  // Keyboard: number keys 0-9 submit that bid, exactly like clicking the chip.
   // Bids above 9 (large rounds) must still be clicked. Skips forbidden / out-of-range.
   const bidKbRef = useRef({});
   bidKbRef.current = { roomState, clientPlayerId, onSubmitBid };
@@ -52,7 +52,7 @@ export function BiddingOverlay({ roomState, clientPlayerId, onSubmitBid }) {
       }
       const bidEndsAt = rs.timer?.endsAt ?? null;
       if (bidEndsAt != null && bidEndsAt - Date.now() <= 0) {
-        return; // timer expired — auto-bid is taking over
+        return; // timer expired. Auto-bid is taking over.
       }
       const bid = Number(event.key);
       const max = rs.gameConfig.cardsInRound;
@@ -117,7 +117,7 @@ export function BiddingOverlay({ roomState, clientPlayerId, onSubmitBid }) {
                ? "Game paused"
                : isMyTurn
               ? expired
-                ? "Time's up — auto-bidding…"
+                 ? "Time's up. Auto-bidding."
                 : "Call your bid"
               : `${currentPlayer?.nickname ?? "Waiting"} is bidding`}
           </h3>

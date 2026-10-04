@@ -1,5 +1,5 @@
 // Synthesised sound palette for the game. Ported verbatim from sfx-preview.html
-// — same Web Audio recipes, wrapped so any component can call playSfx(name).
+// Same Web Audio recipes, wrapped so any component can call playSfx(name).
 //
 // The AudioContext starts suspended until the browser sees a user gesture, so
 // we lazily create + resume it on the first pointer/key/touch event anywhere.

@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { CARD_BACK } from "../lib/cards.js";
 
 // A small face-down fan of card backs tucked beside an opponent's seat for the
-// round. Purely decorative — the real count lives on the seat badge — so it is
+// round. Purely decorative. The real count lives on the seat badge, so it is
 // capped at a few cards regardless of hand size.
 const MAX_VISIBLE = 5;
 

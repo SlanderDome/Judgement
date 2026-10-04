@@ -26,13 +26,14 @@ export function CircularTable({
 }) {
   const total = roomState.seatCount ?? SEAT_COUNT;
   const ring = seatedPlayers(roomState);
-  const bySeat = new Map(ring.map((player) => [player.seatIndex, player]));
+  const occupied = roomState.players.filter((player) => Number.isInteger(player.seatIndex));
+  const bySeat = new Map(occupied.map((player) => [player.seatIndex, player]));
   const seats = Array.from({ length: total }, (_value, index) => index);
   const roundActive = isRoundActive(roomState.status);
   const dealing = dealPhase === "dealing";
   // Spin the ring so the viewer's own seat sits bottom-centre. Spectators keep
   // the raw ring order.
-  const viewerSeat = ring.find((player) => player.playerId === clientPlayerId)?.seatIndex;
+  const viewerSeat = occupied.find((player) => player.playerId === clientPlayerId)?.seatIndex;
 
   return (
     <div className="poker-table" role="group" aria-label="Table seats">
@@ -50,7 +51,7 @@ export function CircularTable({
           !dealing &&
           occupant.playerId !== clientPlayerId &&
           (occupant.handCount ?? 0) > 0;
-        // Top-half seats fan upward — their "below" would land on the trick pile.
+        // Top-half seats fan upward. Their "below" would land on the trick pile.
         const fanAbove = seatUnitVector(displaySlot, total).y < -0.15;
 
         return (

@@ -7,7 +7,7 @@ export const SEAT_COUNT = 8;
 
 export function seatedPlayers(roomState) {
   return roomState.players
-    .filter((player) => Number.isInteger(player.seatIndex))
+    .filter((player) => Number.isInteger(player.seatIndex) && player.isActiveInGame !== false)
     .sort((a, b) => a.seatIndex - b.seatIndex);
 }
 
@@ -23,7 +23,7 @@ export function isSeated(player) {
   return Number.isInteger(player?.seatIndex);
 }
 
-// Unit vector for where seat `index` sits on the table perimeter — seat 0 at
+// Unit vector for where seat `index` sits on the table perimeter. Seat 0 at
 // top-centre, going clockwise. Shared by CircularTable and the dealing overlay
 // so cards fly to exactly where the seats render.
 export function seatUnitVector(index, total = SEAT_COUNT) {

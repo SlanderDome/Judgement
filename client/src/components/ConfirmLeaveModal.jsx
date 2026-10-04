@@ -27,7 +27,7 @@ export function ConfirmLeaveModal({ open, onCancel, onConfirm }) {
   }, [open, onCancel]);
 
   function handleConfirm() {
-    // Synchronous guard — three rapid clicks in one tick must not fire onConfirm thrice.
+    // Synchronous guard. Three rapid clicks in one tick must not fire onConfirm thrice.
     if (leavingRef.current) {
       return;
     }
@@ -46,7 +46,7 @@ export function ConfirmLeaveModal({ open, onCancel, onConfirm }) {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.14 }}
           onMouseDown={(event) => {
-            // Backdrop press closes the modal — it never leaves the game.
+    // Backdrop press closes the modal. It never leaves the game.
             if (event.target === event.currentTarget) {
               onCancel();
             }
@@ -85,7 +85,7 @@ export function ConfirmLeaveModal({ open, onCancel, onConfirm }) {
                 onClick={handleConfirm}
                 disabled={leaving}
               >
-                {leaving ? "Leaving…" : "Leave game"}
+                {leaving ? "Leaving" : "Leave game"}
               </button>
             </div>
           </motion.div>

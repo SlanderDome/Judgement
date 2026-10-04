@@ -3,9 +3,9 @@ import { isRoundActive } from "../lib/seats.js";
 import { DEAL_MS } from "../components/TableDeck.jsx";
 
 // Drives the once-per-round dealing animation.
-//   "idle"    – no round in progress (lobby / game over)
-//   "dealing" – cards are flying out from the dealer (~DEAL_MS)
-//   "settled" – deck is resting, hands are up
+//   "idle"    - no round in progress (lobby / game over)
+//   "dealing" - cards are flying out from the dealer (~DEAL_MS)
+//   "settled" - deck is resting, hands are up
 //
 // Only plays when this client witnessed the round begin (fresh PRE_BIDDING
 // timer). Reconnecting or joining mid-round snaps straight to "settled", as does

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 // Ticks down to an absolute server timestamp (`endsAt`, epoch ms). The interval
-// only drives the display — game correctness lives on the server. Because every
+// only drives the display. Game correctness lives on the server. Because every
 // tick recomputes from `Date.now()`, a reconnect / tab-wake resumes from the
 // real remaining time instead of restarting.
 export function useCountdown(endsAt) {

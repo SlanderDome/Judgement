@@ -41,7 +41,7 @@ export function useGameSounds(roomState, clientPlayerId, errorMessage) {
     prevRef.current = snapshot;
   }, [roomState]);
 
-  // Invalid action — the server bounced something back.
+  // Invalid action. The server bounced something back.
   const prevErrorRef = useRef(errorMessage);
   useEffect(() => {
     if (errorMessage && errorMessage !== prevErrorRef.current) {
@@ -50,7 +50,7 @@ export function useGameSounds(roomState, clientPlayerId, errorMessage) {
     prevErrorRef.current = errorMessage;
   }, [errorMessage]);
 
-  // Timer warning — a restrained pulse ~5s before your own bid / play clock runs
+  // Timer warning. A restrained pulse ~5s before your own bid / play clock runs
   // out. Rescheduled whenever the turn or deadline changes; cleared when it moves
   // on so it never fires for a turn that already passed.
   const status = roomState?.status;

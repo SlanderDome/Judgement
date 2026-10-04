@@ -1,7 +1,7 @@
 // Centralised playing-card asset map.
 //
 // The deck lives in ../assets/cards/ as one SVG per card. Files are named
-// RANK+SUIT, e.g. `AS.svg` (ace of spades), `TH.svg` (ten of hearts — ten is
+// RANK+SUIT, e.g. `AS.svg` (ace of spades), `TH.svg` (ten of hearts. Ten is
 // "T"), `KC.svg` (king of clubs). `1B.svg` is the card BACK.
 //
 // Vite bundles each SVG and hands back a hashed URL; the map is keyed by the
@@ -10,7 +10,7 @@
 
 // `?no-inline` keeps every card as its own .svg file (never base64-inlined),
 // so the deck ships exactly as authored and stays cacheable. 1B.svg (the back)
-// is excluded — it ships as a raster (see CARD_BACK below); the source SVG stays
+// is excluded. It ships as a raster (see CARD_BACK below); the source SVG stays
 // on disk as the reference original.
 const modules = import.meta.glob(
   ["../assets/cards/*.svg", "!../assets/cards/1B.svg"],

@@ -1,6 +1,6 @@
 // Mirrors the server's trick-winner logic (stateEngine.js `cardStrength`) so the
 // client can highlight the card that is *currently* winning the trick, live, as
-// each card is played — not only after the server resolves it.
+// each card is played, not only after the server resolves it.
 
 export function cardStrength(cardPlayed, leadSuit, trumpSuit) {
   const { card } = cardPlayed;

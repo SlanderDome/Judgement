@@ -54,7 +54,7 @@
 
   --card-w-hand: clamp(76px, 11.5vw, 124px);
   --card-w-table: clamp(64px, 7.5vw, 96px);
-  /* Container corner rounding — close to the deck art's own ~4.5% radius so the
+  /* Container corner rounding. Close to the deck art's own ~4.5% radius so the
      clipped white bleed reads as one rounded card edge. */
   --card-r: clamp(5px, 0.7vw, 9px);
   --card-r-inner: 6px;
@@ -74,7 +74,7 @@ body,
 
 body {
   margin: 0;
-  min-height: 100vh;
+  min-height: 100dvh;
   color: var(--ivory);
   font-family: var(--font-body);
   line-height: 1.5;
@@ -228,7 +228,7 @@ input:focus {
   grid-template-columns: minmax(340px, 1.08fr) minmax(300px, 0.92fr);
   gap: clamp(14px, 1.8vw, 24px);
   max-width: 980px;
-  margin: clamp(4vh, 8vh, 9vh) auto 0;
+  margin: clamp(2vh, 5vh, 6vh) auto 0;
   align-self: center;
   width: 100%;
   align-items: stretch;
@@ -259,10 +259,10 @@ input:focus {
 .lobby-hero h1 {
   margin: 0;
   font-family: var(--font-wordmark);
-  font-size: clamp(2.6rem, 6vw, 4.8rem);
+  font-size: clamp(2.45rem, 5.5vw, 4.5rem);
   font-weight: 800;
   letter-spacing: 0.035em;
-  text-shadow: 0 4px 18px rgba(0, 0, 0, 0.3), 0 0 30px rgba(201, 162, 74, 0.14);
+  text-shadow: 0 3px 14px rgba(0, 0, 0, 0.28);
 }
 
 .lobby-hero__kicker {
@@ -314,9 +314,9 @@ input:focus {
   }
 
   .lobby-grid .panel:hover {
-    transform: translateY(-3px);
+    transform: translateY(-2px);
     border-color: rgba(231, 207, 143, 0.28);
-    box-shadow: 0 26px 56px rgba(0, 0, 0, 0.4), inset 0 1px 0 var(--glass-highlight);
+    box-shadow: 0 20px 42px rgba(0, 0, 0, 0.34), inset 0 1px 0 var(--glass-highlight);
   }
 }
 
@@ -593,6 +593,11 @@ input:focus {
   white-space: nowrap;
 }
 
+.room-mark--brand {
+  color: var(--gold-light);
+  font-size: 0.78rem;
+}
+
 .game-header-meta,
 .game-header-actions {
   display: flex;
@@ -706,7 +711,7 @@ input:focus {
   letter-spacing: 0.08em;
 }
 
-/* Room code — click to copy */
+/* Room code. Click to copy. */
 .room-code-btn {
   min-height: 0;
   font-weight: 500;
@@ -1137,7 +1142,7 @@ input:focus {
 }
 
 .poker-table {
-  /* Ring geometry — overridden per breakpoint. --seat-radius-* is how far a
+  /* Ring geometry. Overridden per breakpoint. --seat-radius-* is how far a
      seat centre sits from the table centre, as a % of the table box. */
   --seat-scale: 0.58;
   --seat-radius-x: 46%;
@@ -1288,12 +1293,12 @@ input:focus {
   aspect-ratio: 264 / 360;
   border-radius: clamp(3px, 0.5vw, 6px);
   pointer-events: none;
-  /* box-shadow, not filter: drop-shadow — these are animated every frame and a
+  /* box-shadow, not filter: drop-shadow. These are animated every frame and a
      rectangular box-shadow is far cheaper for the compositor. */
   box-shadow: 0 8px 12px rgba(0, 0, 0, 0.5);
 }
 
-/* Opponent's face-down fan, tucked beside their seat — on the outward side so it
+/* Opponent's face-down fan, tucked beside their seat. On the outward side so it
    never drifts over the centre trick pile. Bottom-half seats fan below; top-half
    seats (where "below" would point at the table centre) fan above instead. */
 .seat-fan {
@@ -1350,14 +1355,14 @@ input:focus {
   min-width: 82px;
   max-width: 108px;
   padding: 0.26rem 0.44rem;
-  /* Opaque fill instead of a translucent panel + backdrop-filter blur — the blur
+  /* Opaque fill instead of a translucent panel + backdrop-filter blur. The blur
      forced the compositor to re-sample the felt behind every seat each frame. */
   background: linear-gradient(180deg, #0c1712, #0a1410);
   border-color: rgba(246, 239, 225, 0.16);
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.42);
 }
 
-/* Empty seat — clickable "SIT" in the lobby */
+/* Empty seat. Clickable "SIT" in the lobby. */
 .seat-sit {
   display: flex;
   flex-direction: column;
@@ -1402,7 +1407,7 @@ input:focus {
   opacity: 0.72;
 }
 
-/* Empty seat — passive (game in progress) */
+/* Empty seat. Passive during a game. */
 .seat-empty {
   display: flex;
   align-items: center;
@@ -1434,7 +1439,7 @@ input:focus {
   border: 1px solid var(--line);
 }
 
-/* Small phones — tighten the ring and shrink seats further */
+/* Small phones. Tighten the ring and shrink seats further. */
 @media (max-width: 400px) {
   .poker-table {
     --seat-scale: 0.52;
@@ -1449,7 +1454,7 @@ input:focus {
   }
 }
 
-/* Desktop — a wide landscape oval with the ring pushed out to the rail */
+/* Desktop. A wide landscape oval with the ring pushed out to the rail. */
 @media (min-width: 861px) {
   .table-wrap {
     width: min(1280px, 100%);
@@ -1478,7 +1483,7 @@ input:focus {
   }
 }
 
-/* Taller desktops — let the seats and oval grow into the extra height */
+/* Taller desktops. Let the seats and oval grow into the extra height. */
 @media (min-width: 861px) and (min-height: 820px) {
   .poker-table {
     --seat-scale: 0.9;
@@ -1564,7 +1569,7 @@ input:focus {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
-/* Trick reveal — the completed trick is held face-up before it clears */
+/* Trick reveal. The completed trick is held face-up before it clears. */
 .trick-reveal {
   display: inline-flex;
   flex-direction: column;
@@ -1598,7 +1603,7 @@ input:focus {
   position: relative;
   width: var(--hand-card-width, var(--card-w-hand));
   /* Native ratio of the deck SVGs (viewBox -132 -180 264 360). Never change
-     this without the artwork changing — the SVGs use preserveAspectRatio="none"
+     this without the artwork changing. The SVGs use preserveAspectRatio="none"
      so a mismatched box would stretch them. */
   aspect-ratio: 264 / 360;
   min-height: 0;
@@ -1636,7 +1641,7 @@ input:focus {
   transform: scale(1.1046, 1.0746);
 }
 
-/* The back ships pre-cropped to the card rect — no transform needed. */
+  /* The back ships pre-cropped to the card rect. No transform needed. */
 .playing-card__art--back {
   transform: none;
 }
@@ -2010,7 +2015,7 @@ input:focus {
   gap: 0.6rem;
 }
 
-/* 30s bidding countdown — prominent but calm */
+/* 30s bidding countdown. Prominent but calm. */
 .bid-timer {
   position: relative;
   display: inline-flex;
@@ -2445,7 +2450,8 @@ input:focus {
   .mobile-game-header {
     position: relative;
     z-index: 30;
-    display: block;
+    display: grid;
+    gap: 0.45rem;
     padding: 8px;
     border: 1px solid rgba(231, 207, 143, 0.2);
     border-radius: 16px;
@@ -2460,6 +2466,12 @@ input:focus {
     align-items: stretch;
     gap: 0.35rem;
     min-width: 0;
+  }
+
+  .mobile-game-header .room-mark--brand {
+    color: var(--ivory);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
   }
 
   .mobile-game-header__metric {
@@ -2798,7 +2810,7 @@ input:focus {
     min-height: 0;
     justify-content: center;
     /* Contains the absolutely-positioned seat ring / drop shadows.
-       The content itself is sized to fit — this is not the fix. */
+     The content itself is sized to fit. This is not the fix. */
     overflow: hidden;
   }
 
@@ -2890,7 +2902,7 @@ input:focus {
     font-size: 0.86rem;
   }
 
-  /* On desktop the header is plain text — give the copy button its own hit area */
+  /* On desktop the header is plain text. Give the copy button its own hit area. */
   .room-code-btn {
     padding: 0.14rem 0.4rem;
     margin: -0.14rem -0.2rem;
@@ -3020,7 +3032,7 @@ input:focus {
     linear-gradient(105deg, rgba(18, 57, 45, 0.86), rgba(5, 24, 19, 0.78) 58%, rgba(4, 18, 14, 0.86)),
     radial-gradient(circle at 12% 0%, rgba(231, 207, 143, 0.12), transparent 34%);
   box-shadow:
-    0 18px 42px rgba(0, 0, 0, 0.32),
+    0 12px 28px rgba(0, 0, 0, 0.24),
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
     inset 0 0 0 1px rgba(0, 0, 0, 0.12);
 }
@@ -3142,12 +3154,19 @@ input:focus {
   border-color: rgba(231, 207, 143, 0.65);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .table-lobby-note--dealing,
+  .poker-table__center .table-center-bidding .bidding-panel {
+    animation: none;
+  }
+}
+
 .bidding-panel--polished {
-  border-color: rgba(94, 234, 212, 0.2);
-  border-radius: 18px;
+  border-color: rgba(231, 207, 143, 0.2);
+  border-radius: var(--radius-lg);
   background:
     linear-gradient(145deg, rgba(18, 57, 45, 0.9), rgba(4, 20, 15, 0.84)),
-    radial-gradient(circle at 100% 0%, rgba(94, 234, 212, 0.1), transparent 36%);
+    radial-gradient(circle at 100% 0%, rgba(231, 207, 143, 0.08), transparent 36%);
   box-shadow:
     0 18px 36px rgba(0, 0, 0, 0.28),
     inset 0 1px 0 rgba(255, 255, 255, 0.07),
@@ -3203,8 +3222,8 @@ input:focus {
 }
 
 .bidding-panel .bid-timer {
-  border-color: rgba(94, 234, 212, 0.3);
-  background: rgba(94, 234, 212, 0.09);
+  border-color: rgba(231, 207, 143, 0.3);
+  background: rgba(231, 207, 143, 0.08);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
@@ -3224,7 +3243,7 @@ input:focus {
 .bidding-panel .bid-chip {
   min-height: 44px;
   border-color: rgba(231, 207, 143, 0.24);
-  border-radius: 10px;
+  border-radius: var(--radius);
   background: rgba(246, 239, 225, 0.045);
   color: rgba(246, 239, 225, 0.82);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);

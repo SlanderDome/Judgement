@@ -32,6 +32,7 @@ export function createPlayer({ playerId, nickname, socketId, seatIndex = null, i
     isAdmin,
     isOnline: true,
     isActiveInGame: true,
+    pendingNextRound: false,
     score: 0,
     hand: [],
     currentBid: null,
@@ -144,6 +145,12 @@ function dealRound(room) {
 }
 
 function prepareRound(room) {
+  room.players.forEach((player) => {
+    if (player.pendingNextRound && Number.isInteger(player.seatIndex)) {
+      player.isActiveInGame = true;
+      player.pendingNextRound = false;
+    }
+  });
   room.status = ROOM_STATUS.PRE_BIDDING;
   room.paused = false;
   room.currentRound = createEmptyCurrentRound();
@@ -195,7 +202,11 @@ export function togglePause(room) {
 }
 
 export function attachPlayerToRoom(room, player) {
-  // New arrivals join as spectators (no seat) until they pick one in the lobby.
+  // New arrivals may watch immediately, then claim a seat for the next round.
+  if (room.status !== ROOM_STATUS.LOBBY) {
+    player.isActiveInGame = false;
+    player.pendingNextRound = false;
+  }
   room.players.push(player);
   room.updatedAt = Date.now();
   return room;
@@ -260,7 +271,7 @@ export function startGame(room, options = {}) {
 // `currentTurnIndex` are indices into this array, not into `room.players`.
 export function getSeatedPlayers(room) {
   return room.players
-    .filter((player) => Number.isInteger(player.seatIndex))
+    .filter((player) => Number.isInteger(player.seatIndex) && player.isActiveInGame !== false)
     .sort((a, b) => a.seatIndex - b.seatIndex);
 }
 
@@ -612,7 +623,9 @@ export function advanceRound(room, options = {}) {
   }
 
   const nextRoundNumber = room.gameConfig.roundNumber + 1;
-  const seatedCount = getSeatedPlayers(room).length || 1;
+  const seatedCount = room.players.filter(
+    (player) => Number.isInteger(player.seatIndex) && (player.isActiveInGame || player.pendingNextRound)
+  ).length || 1;
   const maxAllowed = getMaxCardsForPlayers(seatedCount);
 
   let nextCards = options.cardsInRound ? Number(options.cardsInRound) : null;
@@ -642,10 +655,6 @@ export function advanceRound(room, options = {}) {
 }
 
 export function takeSeat(room, playerId, seatIndex) {
-  if (room.status !== ROOM_STATUS.LOBBY) {
-    throw new Error("Seats are locked once the game starts.");
-  }
-
   const player = room.players.find((entry) => entry.playerId === playerId);
   if (!player) {
     throw new Error("You are not in this room.");
@@ -656,6 +665,14 @@ export function takeSeat(room, playerId, seatIndex) {
     throw new Error("That seat does not exist.");
   }
 
+  if (room.status === ROOM_STATUS.GAME_OVER) {
+    throw new Error("The game is over. Start a rematch before taking a seat.");
+  }
+
+  if (room.status !== ROOM_STATUS.LOBBY && player.isActiveInGame) {
+    throw new Error("Active players cannot change seats until the round ends.");
+  }
+
   const occupant = room.players.find(
     (entry) => entry.playerId !== playerId && entry.seatIndex === seat
   );
@@ -664,7 +681,14 @@ export function takeSeat(room, playerId, seatIndex) {
   }
 
   player.seatIndex = seat;
-  room.gameConfig.maxCards = getMaxCardsForPlayers(getSeatedPlayers(room).length || 1);
+  if (room.status === ROOM_STATUS.LOBBY) {
+    player.isActiveInGame = true;
+    player.pendingNextRound = false;
+    room.gameConfig.maxCards = getMaxCardsForPlayers(getSeatedPlayers(room).length || 1);
+  } else {
+    player.isActiveInGame = false;
+    player.pendingNextRound = true;
+  }
   room.updatedAt = Date.now();
   return room;
 }
@@ -750,6 +774,7 @@ export function resetRoom(room) {
     player.tricksWon = 0;
     player.score = 0;
     player.isActiveInGame = true;
+    player.pendingNextRound = false;
   });
   room.updatedAt = Date.now();
   return room;
@@ -773,7 +798,8 @@ export function sanitizeRoomForPlayer(room, playerId) {
       seatIndex: player.seatIndex,
       isAdmin: player.isAdmin,
       isOnline: player.isOnline,
-      isActiveInGame: player.isActiveInGame,
+       isActiveInGame: player.isActiveInGame,
+       pendingNextRound: player.pendingNextRound === true,
       score: player.score,
       currentBid: player.currentBid,
       tricksWon: player.tricksWon,
