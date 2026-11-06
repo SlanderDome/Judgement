@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { PlayingCard } from "./PlayingCard.jsx";
 import { Seconds } from "./Seconds.jsx";
 import { leadingPlay } from "../lib/trick.js";
@@ -7,7 +7,8 @@ function getPlayerName(players, playerId) {
   return players.find((player) => player.playerId === playerId)?.nickname ?? "Player";
 }
 
-export function TrickTable({ roomState, dropZoneRef, dropActive, revealEndsAt = null }) {
+export function TrickTable({ roomState, dropActive, revealEndsAt = null, aceEffect = null }) {
+  const reduced = useReducedMotion();
   const currentTrick = roomState.currentRound?.currentTrick;
   const playedCards = currentTrick?.cardsPlayed ?? [];
   const lastTrick = roomState.currentRound?.lastTrick;
@@ -25,36 +26,38 @@ export function TrickTable({ roomState, dropZoneRef, dropActive, revealEndsAt = 
       }`}
       aria-label="Played cards table"
     >
-      <div className={`table-felt ${dropActive ? "is-drop-active" : ""}`} ref={dropZoneRef}>
+      <div className={`table-felt ${dropActive ? "is-drop-active" : ""}`}>
         <div className="table-inner">
-          <div className="played-card-grid">
+          <div className="played-card-grid" data-count={playedCards.length}>
             <AnimatePresence mode="popLayout">
               {playedCards.map((play, index) => {
                 const isWinning = play.playerId === winningPlayerId;
+                const aceKind = aceEffect?.cardId === play.card.id && aceEffect?.playerId === play.playerId ? aceEffect.kind : null;
 
                 return (
                 <motion.div
                   key={`${play.playerId}-${play.card.id}`}
                   className={`played-card-slot ${isWinning ? "is-winning" : ""}`}
-                  initial={{ opacity: 0, y: 30, scale: 0.9, rotateX: 10 }}
+                  initial={reduced ? false : { opacity: 0, y: 18 }}
                   animate={{
                     opacity: 1,
-                    y: isWinning ? -6 : 0,
-                    scale: isWinning ? 1.05 : 1,
-                    rotateX: 0
+                    y: 0
                   }}
-                  exit={{ opacity: 0, y: -10, scale: 0.94 }}
+                  exit={{ opacity: 0 }}
                   transition={{ type: "spring", stiffness: 320, damping: 26, delay: index * 0.03 }}
-                  layout
+                  layout="position"
                 >
+                  <div className="played-card-effect" data-ace-kind={aceKind}>
                   <PlayingCard
                     card={play.card}
                     ownerName={getPlayerName(roomState.players, play.playerId)}
                     isTableCard
                     isWinning={isWinning}
-                    rotation={(index - (playedCards.length - 1) / 2) * 7}
+                    rotation={0}
                     delay={0}
+                    aceKind={aceKind}
                   />
+                  </div>
                   <span className={`played-by ${isWinning ? "is-winning" : ""}`}>
                     {getPlayerName(roomState.players, play.playerId)}
                   </span>

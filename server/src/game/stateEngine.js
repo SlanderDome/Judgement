@@ -102,8 +102,8 @@ function scorePlayerForRound(player) {
   return 0;
 }
 
-function buildNextRoundConfig(room) {
-  const { phase, cardsInRound, maxCards } = room.gameConfig;
+function buildNextRoundConfig(room, maxCards = room.gameConfig.maxCards) {
+  const { phase, cardsInRound } = room.gameConfig;
 
   if (phase === "ASCENDING") {
     if (cardsInRound >= maxCards) {
@@ -140,20 +140,23 @@ function dealRound(room) {
     player.hand = hands.get(player.playerId) ?? [];
     player.currentBid = null;
     player.tricksWon = 0;
-    player.isActiveInGame = true;
+    player.isActiveInGame = hands.has(player.playerId);
   });
 }
 
 function prepareRound(room) {
+  const activeIds = new Set(getNextRoundPlayers(room).map(player => player.playerId));
   room.players.forEach((player) => {
-    if (player.pendingNextRound && Number.isInteger(player.seatIndex)) {
-      player.isActiveInGame = true;
+    player.isActiveInGame = activeIds.has(player.playerId);
+    if (player.isActiveInGame) {
       player.pendingNextRound = false;
     }
   });
   room.status = ROOM_STATUS.PRE_BIDDING;
   room.paused = false;
   room.currentRound = createEmptyCurrentRound();
+  room.currentRound.dealerSeatIndex = getSeatedPlayers(room)[room.gameConfig.dealerIndex]?.seatIndex ?? null;
+  room.nextRoundOptions = null;
   room.gameConfig.currentTurnIndex = firstActorIndex(room);
   // Countdown to the automatic bidding start (handleTurnTimeout advances it).
   room.timer = { endsAt: Date.now() + PRE_BIDDING_TIMEOUT_MS, durationMs: PRE_BIDDING_TIMEOUT_MS };
@@ -175,12 +178,15 @@ export function startBidding(room) {
   return room;
 }
 
-export function togglePause(room) {
+export function togglePause(room, desiredPaused) {
   if (![ROOM_STATUS.PRE_BIDDING, ROOM_STATUS.BIDDING, ROOM_STATUS.TRICK_PLAYING, ROOM_STATUS.TRICK_COMPLETE, ROOM_STATUS.ROUND_SUMMARY].includes(room.status)) {
     throw new Error("The game cannot be paused right now.");
   }
 
-  if (room.paused) {
+  const nextPaused = typeof desiredPaused === "boolean" ? desiredPaused : !room.paused;
+  if (nextPaused === room.paused) return room;
+
+  if (!nextPaused) {
     const remainingMs = Math.max(0, room.timer?.remainingMs ?? 0);
     room.paused = false;
     room.timer = {
@@ -202,7 +208,7 @@ export function togglePause(room) {
 }
 
 export function attachPlayerToRoom(room, player) {
-  // New arrivals may watch immediately, then claim a seat for the next round.
+  // New arrivals watch immediately; only the host can reserve a next-round seat.
   if (room.status !== ROOM_STATUS.LOBBY) {
     player.isActiveInGame = false;
     player.pendingNextRound = false;
@@ -235,6 +241,7 @@ export function markPlayerLeft(room, playerId) {
   player.isOnline = false;
   player.socketId = null;
   player.isActiveInGame = false;
+  player.hasLeft = true;
   room.updatedAt = Date.now();
   return player;
 }
@@ -257,6 +264,7 @@ export function reconnectPlayer(room, playerId, socketId, nickname) {
 
 export function startGame(room, options = {}) {
   const seated = getSeatedPlayers(room);
+  validateRoundOptions(options, getMaxCardsForPlayers(seated.length));
   room.gameConfig.maxCards = getMaxCardsForPlayers(seated.length);
   room.gameConfig.phase = "ASCENDING";
   room.gameConfig.cardsInRound = options.cardsInRound ? Math.min(Math.max(1, Number(options.cardsInRound)), room.gameConfig.maxCards) : 1;
@@ -452,7 +460,8 @@ function resolveTrick(room) {
       player.score += scorePlayerForRound(player);
     });
 
-    room.players = room.players.filter((player) => player.isActiveInGame);
+    // Spectators and approved reservations are room members, not departed players.
+    room.players = room.players.filter((player) => !player.hasLeft);
 
     room.currentRound.roundSummary = {
       scores: getSeatedPlayers(room).map((player) => ({
@@ -575,7 +584,8 @@ export function handleTurnTimeout(room) {
 
   if (room.status === ROOM_STATUS.ROUND_SUMMARY) {
     // Scoreboard shown long enough — advance to the next round automatically.
-    return advanceRound(room, {});
+    if (getNextRoundPlayers(room).length < 2 || getNextRoundSetup(room).configurationError) return togglePause(room, true);
+    return advanceRound(room, room.nextRoundOptions ?? {});
   }
 
   if (room.status === ROOM_STATUS.BIDDING) {
@@ -610,6 +620,49 @@ export function handleTurnTimeout(room) {
   return room;
 }
 
+export function getNextRoundPlayers(room) {
+  return room.players.filter(player => !player.hasLeft && Number.isInteger(player.seatIndex) && (player.isActiveInGame || player.pendingNextRound));
+}
+
+export function getNextRoundSetup(room) {
+  const playerCount = getNextRoundPlayers(room).length;
+  const maxCards = getMaxCardsForPlayers(playerCount);
+  const next = buildNextRoundConfig(room, maxCards);
+  const configured = room.nextRoundOptions;
+  const configurationError = configured && configured.cardsInRound > maxCards
+    ? `The roster changed. Choose between 1 and ${maxCards} cards per player.` : null;
+  return {
+    playerCount,
+    maxCards,
+    cardsInRound: configured?.cardsInRound ?? (next ? Math.min(next.cardsInRound, maxCards) : null),
+    phase: next?.phase ?? null,
+    trumpSuit: configured?.trumpSuit ?? getTrumpSuit(room.gameConfig.roundNumber + 1),
+    customized: !!configured,
+    configurationError
+  };
+}
+
+function validateRoundOptions(options, maxCards) {
+  if (options.cardsInRound !== undefined && (!Number.isInteger(Number(options.cardsInRound)) || Number(options.cardsInRound) < 1 || Number(options.cardsInRound) > maxCards)) {
+    throw new Error(`Choose between 1 and ${maxCards} cards per player.`);
+  }
+  if (options.trumpSuit !== undefined && !["SPADES", "HEARTS", "DIAMONDS", "CLUBS"].includes(normalizeSuit(options.trumpSuit))) {
+    throw new Error("Choose a valid trump suit.");
+  }
+}
+
+export function configureNextRound(room, options) {
+  if (room.status !== ROOM_STATUS.ROUND_SUMMARY || !room.paused) {
+    throw new Error("Pause the next-round countdown before changing its setup.");
+  }
+  const maxCards = getMaxCardsForPlayers(getNextRoundPlayers(room).length);
+  validateRoundOptions(options, maxCards);
+  if (options.cardsInRound === undefined || options.trumpSuit === undefined) throw new Error("Choose cards and trump for the next round.");
+  room.nextRoundOptions = { cardsInRound: Number(options.cardsInRound), trumpSuit: normalizeSuit(options.trumpSuit) };
+  room.updatedAt = Date.now();
+  return room;
+}
+
 export function advanceRound(room, options = {}) {
   if (room.status !== ROOM_STATUS.ROUND_SUMMARY) {
     throw new Error("Round progression is not available right now.");
@@ -618,24 +671,27 @@ export function advanceRound(room, options = {}) {
   if (options.action === "end_game") {
     room.status = ROOM_STATUS.GAME_OVER;
     room.timer.endsAt = null;
+    room.paused = false;
     room.updatedAt = Date.now();
     return room;
   }
 
   const nextRoundNumber = room.gameConfig.roundNumber + 1;
-  const seatedCount = room.players.filter(
-    (player) => Number.isInteger(player.seatIndex) && (player.isActiveInGame || player.pendingNextRound)
-  ).length || 1;
+  const previousDealerSeat = room.currentRound.dealerSeatIndex ?? getSeatedPlayers(room)[room.gameConfig.dealerIndex]?.seatIndex ?? -1;
+  const seatedCount = getNextRoundPlayers(room).length;
+  if (seatedCount < 2) throw new Error("At least 2 seated or approved players are required for the next round.");
   const maxAllowed = getMaxCardsForPlayers(seatedCount);
+  validateRoundOptions(options, maxAllowed);
 
   let nextCards = options.cardsInRound ? Number(options.cardsInRound) : null;
   let nextPhase = room.gameConfig.phase;
 
   if (!nextCards) {
-    const nextRoundConfig = buildNextRoundConfig(room);
+    const nextRoundConfig = buildNextRoundConfig(room, maxAllowed);
     if (!nextRoundConfig) {
       room.status = ROOM_STATUS.GAME_OVER;
       room.timer.endsAt = null;
+      room.paused = false;
       room.updatedAt = Date.now();
       return room;
     }
@@ -650,7 +706,11 @@ export function advanceRound(room, options = {}) {
   room.gameConfig.phase = nextPhase;
   room.gameConfig.cardsInRound = nextCards;
   room.gameConfig.trumpSuit = normalizeSuit(options.trumpSuit) || getTrumpSuit(nextRoundNumber);
-  room.gameConfig.dealerIndex = (room.gameConfig.dealerIndex + 1) % seatedCount;
+  // Membership changes can shift ring indices. Rotate from the physical dealer
+  // seat recorded at the deal, including when that player has just been removed.
+  const nextRing = getNextRoundPlayers(room).sort((a, b) => a.seatIndex - b.seatIndex);
+  const nextDealer = nextRing.findIndex(player => player.seatIndex > previousDealerSeat);
+  room.gameConfig.dealerIndex = nextDealer < 0 ? 0 : nextDealer;
   return prepareRound(room);
 }
 
@@ -669,9 +729,7 @@ export function takeSeat(room, playerId, seatIndex) {
     throw new Error("The game is over. Start a rematch before taking a seat.");
   }
 
-  if (room.status !== ROOM_STATUS.LOBBY && player.isActiveInGame) {
-    throw new Error("Active players cannot change seats until the round ends.");
-  }
+  if (room.status !== ROOM_STATUS.LOBBY) throw new Error("Ask the host to admit you for the next round.");
 
   const occupant = room.players.find(
     (entry) => entry.playerId !== playerId && entry.seatIndex === seat
@@ -681,14 +739,32 @@ export function takeSeat(room, playerId, seatIndex) {
   }
 
   player.seatIndex = seat;
-  if (room.status === ROOM_STATUS.LOBBY) {
-    player.isActiveInGame = true;
-    player.pendingNextRound = false;
-    room.gameConfig.maxCards = getMaxCardsForPlayers(getSeatedPlayers(room).length || 1);
-  } else {
-    player.isActiveInGame = false;
-    player.pendingNextRound = true;
+  player.isActiveInGame = true;
+  player.pendingNextRound = false;
+  room.gameConfig.maxCards = getMaxCardsForPlayers(getSeatedPlayers(room).length || 1);
+  room.updatedAt = Date.now();
+  return room;
+}
+
+export function admitNextRound(room, targetPlayerId) {
+  if ([ROOM_STATUS.LOBBY, ROOM_STATUS.GAME_OVER].includes(room.status)) {
+    throw new Error("Next-round admission is only available during a match.");
   }
+  const player = room.players.find(entry => entry.playerId === targetPlayerId);
+  if (!player || player.hasLeft) throw new Error("That player is no longer waiting in this room.");
+  // A retry of an already accepted admission must not allocate another seat.
+  if (player.pendingNextRound && Number.isInteger(player.seatIndex)) return room;
+  if (Number.isInteger(player.seatIndex)) throw new Error("That player already has a seat.");
+  if (!player.isOnline) throw new Error("This player must reconnect before they can be admitted.");
+  const seat = Array.from({ length: room.seatCount ?? SEAT_COUNT }, (_, index) => index)
+    .find(index => !room.players.some(entry => entry.seatIndex === index));
+  if (seat === undefined) throw new Error("The table is full. A seat must become available before admitting another player.");
+  player.seatIndex = seat;
+  player.pendingNextRound = true;
+  player.isActiveInGame = false;
+  player.hand = [];
+  player.currentBid = null;
+  player.tricksWon = 0;
   room.updatedAt = Date.now();
   return room;
 }
@@ -764,6 +840,7 @@ export function resetRoom(room) {
   room.gameConfig.dealerIndex = 0;
   room.gameConfig.trumpSuit = null;
   room.currentRound = createEmptyCurrentRound();
+  room.nextRoundOptions = null;
   room.timer = {
     endsAt: null
   };
@@ -791,6 +868,7 @@ export function sanitizeRoomForPlayer(room, playerId) {
     updatedAt: room.updatedAt,
     gameConfig: room.gameConfig,
     currentRound: room.currentRound,
+    nextRoundSetup: getNextRoundSetup(room),
     timer: room.timer,
     players: room.players.map((player) => ({
       playerId: player.playerId,

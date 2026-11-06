@@ -8,7 +8,7 @@ const PLAYER_ID_STORAGE_KEY = "judgement-player-id";
 
 function getSavedSession() {
   try {
-    const raw = window.localStorage.getItem(SESSION_STORAGE_KEY);
+    const raw = window.sessionStorage.getItem(SESSION_STORAGE_KEY);
     if (raw) {
       const data = JSON.parse(raw);
       if (data && data.roomId && data.playerId) {
@@ -18,7 +18,7 @@ function getSavedSession() {
   } catch (_error) {
     // Ignore JSON parse errors
   }
-  const fallbackPlayerId = window.localStorage.getItem(PLAYER_ID_STORAGE_KEY);
+  const fallbackPlayerId = window.sessionStorage.getItem(PLAYER_ID_STORAGE_KEY);
   return fallbackPlayerId ? { playerId: fallbackPlayerId } : null;
 }
 
@@ -28,14 +28,14 @@ function saveSession(session) {
   }
 
   if (session.roomId) {
-    window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+    window.sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
   }
 
-  window.localStorage.setItem(PLAYER_ID_STORAGE_KEY, session.playerId);
+  window.sessionStorage.setItem(PLAYER_ID_STORAGE_KEY, session.playerId);
 }
 
 function clearSession() {
-  window.localStorage.removeItem(SESSION_STORAGE_KEY);
+  window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
 }
 
 function getClientTimerState(roomState, serverNow) {
@@ -63,6 +63,8 @@ export function useGameState() {
     () => getSavedSession()?.playerId || null
   );
   const [errorMessage, setErrorMessage] = useState("");
+  const [roomSynced, setRoomSynced] = useState(false);
+  const [sessionConflict, setSessionConflict] = useState(false);
   const roomStateRef = useRef(null);
 
   function getPlayerCount(state) {
@@ -92,7 +94,8 @@ export function useGameState() {
       socket.emit("room:join", {
         roomId: session.roomId.trim().toUpperCase(),
         nickname: session.nickname || "",
-        playerId: session.playerId
+        playerId: session.playerId,
+        resume: true
       });
     },
     [socket]
@@ -134,7 +137,9 @@ export function useGameState() {
       }
 
       roomStateRef.current = nextRoomState;
-      setRoomState(payload.roomState);
+      setRoomState(nextRoomState);
+      setRoomSynced(true);
+      setSessionConflict(false);
       setClientPlayerId(payload.clientPlayerId);
       setErrorMessage("");
 
@@ -190,7 +195,17 @@ export function useGameState() {
       setErrorMessage(payload.message || "The host removed you from the room.");
     }
 
+    function handleConflict(payload) {
+      setRoomSynced(false);
+      setSessionConflict(true);
+      setErrorMessage(payload.message);
+    }
+
     function handleError(payload) {
+      if (payload.code === "SESSION_CONFLICT") {
+        handleConflict(payload);
+        return;
+      }
       setErrorMessage(payload.message);
       if (
         payload.code === "ROOM_NOT_FOUND" ||
@@ -205,6 +220,7 @@ export function useGameState() {
     socket.on("room:created", handleRoomCreated);
     socket.on("room:joined", handleRoomJoined);
     socket.on("room:kicked", handleRoomKicked);
+    socket.on("room:session_conflict", handleConflict);
     socket.on("game:error", handleError);
 
     return () => {
@@ -212,24 +228,18 @@ export function useGameState() {
       socket.off("room:created", handleRoomCreated);
       socket.off("room:joined", handleRoomJoined);
       socket.off("room:kicked", handleRoomKicked);
+      socket.off("room:session_conflict", handleConflict);
       socket.off("game:error", handleError);
     };
   }, [socket]);
 
   useEffect(() => {
-    if (isConnected) {
+    if (isConnected && !sessionConflict) {
       syncWithServer();
+    } else {
+      setRoomSynced(false);
     }
-
-    function handleConnect() {
-      syncWithServer();
-    }
-
-    socket.on("connect", handleConnect);
-    return () => {
-      socket.off("connect", handleConnect);
-    };
-  }, [socket, isConnected, syncWithServer]);
+  }, [isConnected, sessionConflict, syncWithServer]);
 
   useEffect(() => {
     function handleVisibilityOrFocus() {
@@ -239,12 +249,13 @@ export function useGameState() {
           return;
         }
 
-        if (socket.connected) {
+        if (socket.connected && !sessionConflict) {
+          setRoomSynced(false);
           socket.emit("room:sync", {
             roomId: session.roomId,
             playerId: session.playerId
           });
-        } else {
+        } else if (!socket.connected && !sessionConflict) {
           socket.connect();
         }
       }
@@ -257,7 +268,7 @@ export function useGameState() {
       document.removeEventListener("visibilitychange", handleVisibilityOrFocus);
       window.removeEventListener("focus", handleVisibilityOrFocus);
     };
-  }, [socket]);
+  }, [socket, sessionConflict]);
 
   function createRoom(nickname) {
     socket.emit("room:create", {
@@ -293,6 +304,9 @@ export function useGameState() {
     clearSession();
     roomStateRef.current = null;
     setRoomState(null);
+    setRoomSynced(false);
+    setSessionConflict(false);
+    setClientPlayerId(null);
     setErrorMessage("");
   }
 
@@ -319,103 +333,82 @@ export function useGameState() {
     });
   }
 
-  function kickPlayer(targetPlayerId) {
-    if (!roomState || !clientPlayerId || !targetPlayerId) {
-      return;
+  function requestRoomAction(event, options = {}) {
+    const current = roomStateRef.current;
+    if (!current || !clientPlayerId || !socket.connected || !roomSynced || sessionConflict) {
+      return Promise.resolve({ success: false, message: "Reconnect to the table before taking an action." });
     }
-
-    socket.emit("room:kick", {
-      roomId: roomState.roomId,
-      playerId: clientPlayerId,
-      targetPlayerId
+    const roomId = current.roomId;
+    return new Promise(resolve => {
+      socket.timeout(6000).emit(event, {
+        expectedRound: current.gameConfig.roundNumber,
+        expectedStatus: current.status,
+        ...options,
+        roomId,
+        playerId: clientPlayerId
+      }, (error, response) => {
+        if (roomStateRef.current?.roomId !== roomId) {
+          resolve({ success: false, message: "You are no longer in this room." });
+          return;
+        }
+        const result = error
+          ? { success: false, message: "No confirmation received. Check the current table before trying again." }
+          : response ?? { success: false, message: "The server did not confirm this change." };
+        if (!result.success) setErrorMessage(result.message);
+        resolve(result);
+      });
     });
+  }
+
+  function kickPlayer(targetPlayerId, context = {}) {
+    return requestRoomAction("room:kick", { targetPlayerId, ...context });
+  }
+
+  function admitPlayer(targetPlayerId, context = {}) {
+    return requestRoomAction("room:admit", { targetPlayerId, ...context });
   }
 
   function startGame(options = {}) {
-    if (!roomState || !clientPlayerId) {
-      return;
-    }
-
-    socket.emit("game:start", {
-      roomId: roomState.roomId,
-      playerId: clientPlayerId,
-      ...options
-    });
+    return requestRoomAction("game:start", options);
   }
 
-  function submitBid(bid) {
-    if (!roomState || !clientPlayerId) {
-      return;
-    }
-
-    socket.emit("game:bid", {
-      roomId: roomState.roomId,
-      playerId: clientPlayerId,
-      bid
-    });
+  function submitBid(bid, context = {}) {
+    return requestRoomAction("game:bid", { bid, ...context });
   }
 
-  function startBidding() {
-    if (!roomState || !clientPlayerId) {
-      return;
-    }
+  function startBidding(context = {}) {
+    return requestRoomAction("game:start_bidding", context);
+  }
 
-    socket.emit("game:start_bidding", {
-      roomId: roomState.roomId,
-      playerId: clientPlayerId
-    });
+  function setPaused(paused, context = {}) {
+    return requestRoomAction("game:toggle_pause", { paused, ...context });
   }
 
   function togglePause() {
-    if (!roomState || !clientPlayerId) {
-      return;
-    }
-
-    socket.emit("game:toggle_pause", {
-      roomId: roomState.roomId,
-      playerId: clientPlayerId
-    });
+    return setPaused(!roomStateRef.current?.paused);
   }
 
-  function playCard(cardId) {
-    if (!roomState || !clientPlayerId) {
-      return;
-    }
-
-    socket.emit("game:play_card", {
-      roomId: roomState.roomId,
-      playerId: clientPlayerId,
-      cardId
-    });
+  function playCard(cardId, context = {}) {
+    return requestRoomAction("game:play_card", { cardId, ...context });
   }
 
   function nextRound(options = {}) {
-    if (!roomState || !clientPlayerId) {
-      return;
-    }
+    return requestRoomAction("game:next_round", options);
+  }
 
-    socket.emit("game:next_round", {
-      roomId: roomState.roomId,
-      playerId: clientPlayerId,
-      ...options
-    });
+  function configureNextRound(options = {}) {
+    return requestRoomAction("game:configure_next_round", options);
   }
 
   function rematch() {
-    if (!roomState || !clientPlayerId) {
-      return;
-    }
-
-    socket.emit("game:rematch", {
-      roomId: roomState.roomId,
-      playerId: clientPlayerId
-    });
+    return requestRoomAction("game:rematch");
   }
 
   return {
     clientPlayerId,
     errorMessage,
     isConnected,
+    connectionStatus: sessionConflict ? "conflict" : isConnected && roomSynced ? "connected" : "reconnecting",
     roomState,
     actions: {
       createRoom,
@@ -424,12 +417,15 @@ export function useGameState() {
       takeSeat,
       leaveSeat,
       kickPlayer,
+      admitPlayer,
       startGame,
       startBidding,
       togglePause,
+      setPaused,
       submitBid,
       playCard,
       nextRound,
+      configureNextRound,
       rematch
     }
   };

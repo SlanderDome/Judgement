@@ -1,7 +1,10 @@
 import { PlayerSeat } from "./PlayerSeat.jsx";
 import { SeatCardFan } from "./SeatCardFan.jsx";
 import { TableDeck } from "./TableDeck.jsx";
-import { SEAT_COUNT, isRoundActive, seatDisplaySlot, seatUnitVector, seatedPlayers } from "../lib/seats.js";
+import { TablePlayEffects } from "./TablePlayEffects.jsx";
+import { SEAT_COUNT, isRoundActive, seatDisplaySlot, seatUnitVector } from "../lib/seats.js";
+
+const SUIT_MARKS = { SPADES: "♠", HEARTS: "♥", CLUBS: "♣", DIAMONDS: "♦", NO_TRUMP: "NT" };
 
 // CSS multiplies this unit vector by the table's --seat-radius-*, so the ring
 // re-proportions per breakpoint without touching JS.
@@ -22,10 +25,12 @@ export function CircularTable({
   timerDurationMs,
   dealPhase = "idle",
   onTakeSeat,
-  centerSlot
+  centerSlot,
+  dropZoneRef,
+  aceEffect,
+  bidEffect
 }) {
   const total = roomState.seatCount ?? SEAT_COUNT;
-  const ring = seatedPlayers(roomState);
   const occupied = roomState.players.filter((player) => Number.isInteger(player.seatIndex));
   const bySeat = new Map(occupied.map((player) => [player.seatIndex, player]));
   const seats = Array.from({ length: total }, (_value, index) => index);
@@ -34,11 +39,19 @@ export function CircularTable({
   // Spin the ring so the viewer's own seat sits bottom-centre. Spectators keep
   // the raw ring order.
   const viewerSeat = occupied.find((player) => player.playerId === clientPlayerId)?.seatIndex;
+  const bidSeat = occupied.find(player => player.playerId === bidEffect?.playerId)?.seatIndex;
+  const bidTarget = Number.isInteger(bidSeat) ? seatUnitVector(seatDisplaySlot(bidSeat, viewerSeat, total), total) : null;
 
   return (
-    <div className="poker-table" role="group" aria-label="Table seats">
-      <div className="poker-table__felt" aria-hidden="true" />
+    <div className="poker-table" ref={dropZoneRef} role="group" aria-label="Table seats" data-ace-effect={aceEffect?.kind}>
+      <div className="poker-table__felt" aria-hidden="true">
+        <div className="poker-table__inlay" />
+        <div className="poker-table__emblem"><span>{roomState.status === "LOBBY" ? "♠" : SUIT_MARKS[roomState.gameConfig?.trumpSuit] ?? ""}</span></div>
+        <div className="poker-table__wordmark">J U D G E M E N T</div>
+        <TablePlayEffects ace={aceEffect} />
+      </div>
       <div className="poker-table__center">{centerSlot}</div>
+      {bidEffect && bidTarget && <div key={bidEffect.id} className="room-bid-flight" style={{ "--bid-x": bidTarget.x, "--bid-y": bidTarget.y }} aria-hidden="true"><span>{bidEffect.value}</span></div>}
 
       <TableDeck roomState={roomState} dealPhase={dealPhase} total={total} viewerSeat={viewerSeat} />
 
@@ -58,6 +71,9 @@ export function CircularTable({
           <div
             className="table-seat"
             key={seatIndex}
+            data-slot={displaySlot}
+            data-side={Math.abs(seatUnitVector(displaySlot, total).x) > .99 ? (seatUnitVector(displaySlot, total).x < 0 ? "left" : "right") : undefined}
+            data-pole={Math.abs(seatUnitVector(displaySlot, total).y) > .99 ? "true" : undefined}
             style={seatVars(displaySlot, total)}
           >
             {occupant ? (
@@ -68,6 +84,7 @@ export function CircularTable({
                   isClient={occupant.playerId === clientPlayerId}
                   isTurn={occupant.playerId === currentTurnPlayerId}
                   isDealer={occupant.playerId === dealerPlayerId}
+                  isHost={occupant.playerId === roomState.adminPlayerId}
                   isRecentlyActed={occupant.playerId === recentlyActedPlayerId}
                   isDimmed={!occupant.isOnline}
                   timerEndsAt={occupant.playerId === currentTurnPlayerId ? timerEndsAt : null}
@@ -85,7 +102,7 @@ export function CircularTable({
                 <span className="seat-sit__num">{seatIndex + 1}</span>
               </button>
             ) : (
-              <div className="seat-empty" aria-hidden="true" />
+              <div className="seat-empty" aria-label={`Seat ${seatIndex + 1} empty`}>Seat {seatIndex + 1}</div>
             )}
           </div>
         );

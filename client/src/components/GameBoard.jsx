@@ -1,19 +1,19 @@
 import { useEffect, useRef, useState } from "react";
-import { motion } from "framer-motion";
+import { LayoutGroup, motion } from "framer-motion";
 import { AdminRoundControl } from "./AdminRoundControl.jsx";
 import { BiddingOverlay } from "./BiddingOverlay.jsx";
 import { CircularTable } from "./CircularTable.jsx";
 import { ConfirmLeaveModal } from "./ConfirmLeaveModal.jsx";
-import { ConnectionBadge } from "./ConnectionBadge.jsx";
-import { RoomCodeButton } from "./RoomCodeButton.jsx";
-import { SoundToggle } from "./SoundToggle.jsx";
+import { RoomNavbar } from "./RoomNavbar.jsx";
+import { RoomAtmosphere } from "./RoomAtmosphere.jsx";
+import { RoomCountdown } from "./RoomCountdown.jsx";
 import { PlayingHand } from "./PlayingHand.jsx";
-import { TrumpIndicator } from "./TrumpIndicator.jsx";
 import { TrickTable } from "./TrickTable.jsx";
 import { Seconds } from "./Seconds.jsx";
 import { currentTurnPlayer, dealerPlayer, isSeated, seatedPlayers } from "../lib/seats.js";
 import { useDealSequence } from "../hooks/useDealSequence.js";
 import { useGameSounds } from "../hooks/useGameSounds.js";
+import { useRoomEffects } from "../hooks/useRoomEffects.js";
 
 function Scoreboard({ roomState, clientPlayerId, action }) {
   const scores = roomState.currentRound?.roundSummary?.scores ?? seatedPlayers(roomState);
@@ -63,15 +63,19 @@ export function GameBoard({
   roomState,
   clientPlayerId,
   isConnected,
+  connectionStatus,
   errorMessage,
   onStartGame,
   onStartBidding,
   onTogglePause,
+  onSetPaused,
   onSubmitBid,
   onPlayCard,
   onTakeSeat,
   onKickPlayer,
+  onAdmitPlayer,
   onNextRound,
+  onConfigureNextRound,
   onRematch,
   onLeaveRoom
 }) {
@@ -79,9 +83,38 @@ export function GameBoard({
 
   const [adminOpen, setAdminOpen] = useState(false);
   const [leaveOpen, setLeaveOpen] = useState(false);
-  const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [hostPending, setHostPending] = useState(null);
+  const [hostError, setHostError] = useState("");
+  const hostInFlight = useRef(false);
+  const summaryHoldRef = useRef(null);
   const dropZoneRef = useRef(null);
+  const adminDialogRef = useRef(null);
+
+  useEffect(() => {
+    if (!adminOpen) return undefined;
+    const previousFocus = document.activeElement;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const panel = adminDialogRef.current;
+    panel?.querySelector("button:not(:disabled)")?.focus({ preventScroll: true });
+    function handleKey(event) {
+      if (event.key === "Escape") { event.preventDefault(); setAdminOpen(false); }
+      if (event.key !== "Tab") return;
+      const controls = [...(panel?.querySelectorAll("button:not(:disabled), input:not(:disabled), select:not(:disabled), summary, [tabindex='0']") ?? [])].filter(node => node.getClientRects().length);
+      if (!controls.length) return;
+      const first = controls[0], last = controls[controls.length - 1];
+      if (event.shiftKey && (document.activeElement === first || !panel.contains(document.activeElement))) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && (document.activeElement === last || !panel.contains(document.activeElement))) { event.preventDefault(); first.focus(); }
+    }
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("keydown", handleKey);
+      document.body.style.overflow = previousOverflow;
+      if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
+      else document.querySelector(".room-host-toggle")?.focus({ preventScroll: true });
+    };
+  }, [adminOpen]);
 
   const dealPhase = useDealSequence(roomState);
   const isDealing = dealPhase === "dealing";
@@ -109,6 +142,8 @@ export function GameBoard({
   const isSummary = status === "ROUND_SUMMARY";
   const isGameOver = status === "GAME_OVER";
   const isPaused = roomState.paused === true;
+  const connected = isConnected && connectionStatus === "connected";
+  const effects = useRoomEffects(roomState, connected, clientPlayerId);
   const turnPlayer = currentTurnPlayer(roomState);
   const turnActive = status === "BIDDING" || isPlaying;
   const isMyTurn = turnActive && turnPlayer?.playerId === clientPlayerId;
@@ -120,21 +155,10 @@ export function GameBoard({
     : currentTrickCards[currentTrickCards.length - 1]?.playerId ??
       roomState.currentRound?.lastTrick?.winnerPlayerId ??
       null;
-  const phaseLabel = isPaused
-    ? "Paused"
-    : {
-        LOBBY: "Lobby",
-        PRE_BIDDING: "Waiting",
-        BIDDING: "Bidding",
-        TRICK_PLAYING: isMyTurn ? "Your turn" : "Waiting",
-        TRICK_COMPLETE: "Trick won",
-        ROUND_SUMMARY: "Round complete",
-        GAME_OVER: "Game over"
-      }[status] ?? status;
   const turnLabel = isPaused
     ? "Game paused"
     : status === "LOBBY"
-      ? "Waiting for host"
+      ? "Waiting for players"
       : status === "PRE_BIDDING"
         ? "Get ready"
         : isTrickComplete
@@ -160,15 +184,50 @@ export function GameBoard({
     leadSuit && hasLeadSuit ? hand.filter((card) => card.suit === leadSuit).map((card) => card.id) : hand.map((card) => card.id)
   );
 
-  // Bidding auto-starts after a countdown, so the host has nothing to do during
-  // PRE_BIDDING. The panel is only for the lobby and between-round setup.
-  const canOpenHostPanel = isAdmin && !isGameOver;
+  const hostContext = { expectedRound: roomState.gameConfig.roundNumber, expectedStatus: status };
+  async function runHostAction(key, action) {
+    if (hostInFlight.current || !connected) return;
+    hostInFlight.current = true; setHostPending(key); setHostError("");
+    try {
+      const result = await action();
+      if (!result?.success) setHostError(result?.message ?? "The server did not confirm this change.");
+      return result;
+    } catch {
+      setHostError("Unable to confirm this change. Check your connection.");
+    } finally {
+      hostInFlight.current = false; setHostPending(null);
+    }
+  }
+
+  // An explicit desired state is idempotent. A stale summary request cannot pause
+  // the following round, because its round and phase travel to the server.
   function openHostControls() {
-    if (isSummary && !roomState.paused) {
-      onTogglePause();
+    if (!isAdmin) return;
+    if (isSummary && !isPaused) {
+      summaryHoldRef.current = `${roomState.roomId}:${roomState.gameConfig.roundNumber}`;
+      runHostAction("pause", () => onSetPaused(true, hostContext));
     }
     setAdminOpen(true);
   }
+  const previousRoundRef = useRef(roomState.gameConfig.roundNumber);
+  useEffect(() => {
+    if (previousRoundRef.current !== roomState.gameConfig.roundNumber) {
+      setAdminOpen(false); setHostError("");
+      previousRoundRef.current = roomState.gameConfig.roundNumber;
+    }
+  }, [roomState.gameConfig.roundNumber]);
+  useEffect(() => {
+    if (status !== "ROUND_SUMMARY") return;
+    // Bring the five-second decision into view after playing from the lower hand.
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [status]);
+  useEffect(() => {
+    const key = `${roomState.roomId}:${roomState.gameConfig.roundNumber}`;
+    if (isSummary && adminOpen && !isPaused && !hostPending && summaryHoldRef.current !== key) {
+      summaryHoldRef.current = key;
+      runHostAction("pause", () => onSetPaused(true, hostContext));
+    }
+  }, [status, adminOpen, isPaused, hostPending]);
   const timerEndsAt = roomState.timer?.endsAt ?? null;
   const timerDurationMs = roomState.timer?.durationMs ?? null;
   const seatedCount = seatedPlayers(roomState).length;
@@ -198,175 +257,84 @@ export function GameBoard({
     ) : (
       <div className="table-lobby-note">
         <strong>
-          <Seconds endsAt={timerEndsAt} />s
+          {isPaused ? "Paused" : <><Seconds endsAt={timerEndsAt} />s</>}
         </strong>
-        Cards dealt. Bidding starts automatically
+        {isPaused ? "Resume the game to continue" : "Cards dealt. Bidding starts automatically"}
       </div>
     )
   ) : isBidding ? (
     <div className="table-center-bidding">
-      <BiddingOverlay roomState={roomState} clientPlayerId={clientPlayerId} onSubmitBid={onSubmitBid} />
+      <BiddingOverlay roomState={roomState} clientPlayerId={clientPlayerId} onSubmitBid={onSubmitBid} isConnected={connected} />
     </div>
   ) : (
     <TrickTable
       roomState={roomState}
-      dropZoneRef={dropZoneRef}
       dropActive={isDragging}
       revealEndsAt={isTrickComplete ? timerEndsAt : null}
+      aceEffect={effects.ace}
+      clientPlayerId={clientPlayerId}
     />
   );
 
-  const statusClass = `gh-state gh-state--${phaseLabel.toLowerCase().replace(/\s+/g, "-")}`;
-
   return (
+    <LayoutGroup id={`${roomState.roomId}:${roomState.gameConfig.roundNumber}`}>
     <div
-      className={`game-layout game-layout--${status.toLowerCase().replace(/_/g, "-")} ${
+      className={`game-layout room-concept game-layout--${status.toLowerCase().replace(/_/g, "-")} ${
         isDealing ? "game-layout--dealing" : ""
       } ${isPaused ? "game-layout--paused" : ""}`}
     >
-        <header className="game-header">
-          <span className="room-mark room-mark--brand">JUDGEMENT</span>
-          <div className="game-header-meta game-header__meta">
-          <RoomCodeButton roomId={roomState.roomId} />
-          {isLobby ? (
-            <>
-              <span className="gh-dot" aria-hidden="true">·</span>
-              <span className="gh-item">
-                <strong>
-                  {seatedCount}/{seatCap}
-                </strong>{" "}
-                seated
-              </span>
-            </>
-          ) : (
-            <>
-              <span className="gh-dot" aria-hidden="true">·</span>
-              <span className="gh-item">
-                Round <strong>{roomState.gameConfig.roundNumber}</strong>
-              </span>
-              <span className="gh-dot" aria-hidden="true">·</span>
-              <span className="gh-item">
-                <span
-                  className="round-direction"
-                  aria-label={roomState.gameConfig.phase === "ASCENDING" ? "Ascending" : "Descending"}
-                >
-                  {roomState.gameConfig.phase === "ASCENDING" ? "↑" : "↓"}
-                </span>{" "}
-                <strong>{roomState.gameConfig.cardsInRound}</strong>{" "}
-                {roomState.gameConfig.cardsInRound === 1 ? "card" : "cards"}
-              </span>
-              <span className="gh-dot" aria-hidden="true">·</span>
-              <TrumpIndicator roomState={roomState} />
-            </>
-          )}
-        </div>
-        <div className="game-header-actions game-header__actions">
-          <SoundToggle />
-          <ConnectionBadge isConnected={isConnected} />
-          <span className={`gh-item gh-state gh-state--${phaseLabel.toLowerCase().replace(/\s+/g, "-")}`} aria-label={`Phase ${phaseLabel}, ${turnLabel}`}>
-            <strong>{phaseLabel}</strong>
-            {turnLabel !== phaseLabel && <span>{turnLabel}</span>}
-          </span>
-          {isAdmin && isPreBidding && (
-            <button type="button" className="btn-primary btn-sm" onClick={onStartBidding}>
-              Start bidding now
-            </button>
-          )}
-          <button type="button" className="btn-ghost btn-sm" onClick={() => setLeaveOpen(true)}>
-            Main menu
-          </button>
-          {canOpenHostPanel && (
-            <button type="button" className="btn-ghost btn-sm" onClick={openHostControls}>
-              Host controls
-            </button>
-          )}
-        </div>
-      </header>
-
-      <header className="mobile-game-header">
-        <span className="room-mark room-mark--brand">JUDGEMENT</span>
-        <div className="mobile-game-header__top">
-          <div className="mobile-game-header__metric">
-            <span>Round</span>
-            <strong>{isLobby ? "-" : roomState.gameConfig.roundNumber}</strong>
-          </div>
-          <div className="mobile-game-header__metric">
-            <span>Cards</span>
-            <strong>
-              {isLobby ? "-" : <><span aria-label={roomState.gameConfig.phase === "ASCENDING" ? "Ascending" : "Descending"}>{roomState.gameConfig.phase === "ASCENDING" ? "↑" : "↓"}</span> {roomState.gameConfig.cardsInRound}</>}
-            </strong>
-          </div>
-          <div className="mobile-game-header__metric">
-            <span>Trump</span>
-            <strong><TrumpIndicator roomState={roomState} /></strong>
-          </div>
-          <button
-            type="button"
-            className="mobile-menu-trigger"
-            aria-label="Open game menu"
-            aria-expanded={mobileActionsOpen}
-            onClick={() => setMobileActionsOpen((open) => !open)}
-          >
-            <span aria-hidden="true">•••</span>
-          </button>
-        </div>
-        <div className={`${statusClass} mobile-game-header__status`} aria-label={`Phase ${phaseLabel}, ${turnLabel}`}>
-          <strong>{phaseLabel}</strong>
-          {turnLabel !== phaseLabel && <span>{turnLabel}</span>}
-        </div>
-      </header>
-
-      {mobileActionsOpen && (
-        <div className="mobile-actions-backdrop" role="presentation" onClick={() => setMobileActionsOpen(false)}>
-          <div className="mobile-actions-sheet" role="dialog" aria-label="Game menu" onClick={(event) => event.stopPropagation()}>
-            <div className="mobile-actions-sheet__handle" aria-hidden="true" />
-            <div className="mobile-actions-sheet__head">
-              <strong>Game menu</strong>
-              <button type="button" className="mobile-actions-sheet__close" onClick={() => setMobileActionsOpen(false)} aria-label="Close game menu">
-                ×
-              </button>
-            </div>
-            <RoomCodeButton roomId={roomState.roomId} />
-            <div className="mobile-actions-sheet__utility-row">
-              <SoundToggle />
-              <ConnectionBadge isConnected={isConnected} />
-            </div>
-            {isAdmin && isPreBidding && (
-              <button type="button" className="btn-primary" onClick={() => { setMobileActionsOpen(false); onStartBidding(); }}>
-                Start bidding now
-              </button>
-            )}
-            {isAdmin && !isLobby && !isGameOver && !isSummary && (
-              <button type="button" className="btn-ghost" onClick={() => { setMobileActionsOpen(false); onTogglePause(); }}>
-                {isPaused ? "Resume game" : "Pause game"}
-              </button>
-            )}
-            <button type="button" className="btn-ghost" onClick={() => { setMobileActionsOpen(false); setLeaveOpen(true); }}>
-              Main menu
-            </button>
-            {canOpenHostPanel && (
-              <button type="button" className="btn-ghost" onClick={() => { setMobileActionsOpen(false); openHostControls(); }}>
-                Host controls
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
+      <RoomAtmosphere />
+      <RoomNavbar
+        roomState={roomState}
+        clientPlayerId={clientPlayerId}
+        isConnected={connected}
+        connectionStatus={connectionStatus}
+        errorMessage={errorMessage}
+        adminOpen={adminOpen}
+        hostBusy={!!hostPending}
+        onToggleHost={() => adminOpen ? setAdminOpen(false) : openHostControls()}
+        onStartBidding={onStartBidding}
+        onSetPaused={onSetPaused}
+        onExit={() => setLeaveOpen(true)}
+      />
+      <section className="room-statusbar" aria-label="Game status" inert={adminOpen ? "" : undefined}>
+        <h1 className="room-sr-only">Judgement table {roomState.roomId}</h1>
+        <p aria-live="polite">{turnLabel}</p>
+        {!connected && <p className="room-connection-notice" role="status">Reconnecting. Actions resume when the table is connected.</p>}
+      </section>
+      {(isSummary || isGameOver) && <section className="room-round-summary" aria-label={isGameOver ? "Final results" : "Round results"} inert={adminOpen ? "" : undefined}>
+        <Scoreboard roomState={roomState} clientPlayerId={clientPlayerId} action={<>
+          {isSummary ? <>
+            <span className="room-summary-timer">{isPaused ? "Next round paused at" : "Next round in"} <RoomCountdown timer={roomState.timer} paused={isPaused} /></span>
+            {isAdmin && <>
+              <button type="button" className="btn-ghost" disabled={!!hostPending || !connected} onClick={() => runHostAction("pause", () => onSetPaused(!isPaused, hostContext))}>{hostPending === "pause" ? "Confirming…" : isPaused ? "Resume countdown" : "Pause next round"}</button>
+              <button type="button" className="btn-primary" disabled={!!hostPending || !connected} onClick={openHostControls}>Manage players</button>
+              <button type="button" className="btn-ghost" disabled={!!hostPending || !connected || (roomState.nextRoundSetup?.cardsInRound !== null && ((roomState.nextRoundSetup?.playerCount ?? 0) < 2 || !!roomState.nextRoundSetup?.configurationError))} onClick={() => runHostAction("next", () => onNextRound(roomState.nextRoundSetup?.cardsInRound === null ? { ...hostContext, action: "end_game" } : hostContext))}>{hostPending === "next" ? "Starting…" : roomState.nextRoundSetup?.cardsInRound === null ? "Finish match now" : "Start next round now"}</button>
+            </>}
+          </> : isAdmin ? <button type="button" className="btn-primary" disabled={!!hostPending || !connected} onClick={() => runHostAction("rematch", onRematch)}>{hostPending === "rematch" ? "Resetting…" : "Rematch"}</button> : <span className="chip">Waiting for the host to start a rematch</span>}
+          {hostError && <p className="host-error" role="alert">{hostError}</p>}
+        </>} />
+      </section>}
+      <div className="room-table-frame" inert={adminOpen ? "" : undefined}>
+      <div className="room-table-spacer" aria-hidden="true" />
+      <div className="room-table-stage">
       <div className="table-wrap">
         <CircularTable
           roomState={roomState}
           clientPlayerId={clientPlayerId}
-           canSit={!isGameOver && (!clientSeated || isLobby)}
+          canSit={isLobby && connected}
           isSeated={clientSeated}
           dealerPlayerId={showDealerId}
-          currentTurnPlayerId={activeTurnId}
+          currentTurnPlayerId={isPaused ? null : activeTurnId}
           recentlyActedPlayerId={!isMyTurn ? recentlyActedPlayerId : null}
-          timerEndsAt={status === "BIDDING" ? null : timerEndsAt}
+          timerEndsAt={isPaused || status === "BIDDING" ? null : timerEndsAt}
           timerDurationMs={timerDurationMs}
           dealPhase={dealPhase}
           onTakeSeat={onTakeSeat}
           centerSlot={tableCenter}
+          dropZoneRef={isPlaying ? dropZoneRef : undefined}
+          aceEffect={effects.ace}
+          bidEffect={effects.bid}
         />
       </div>
 
@@ -375,7 +343,7 @@ export function GameBoard({
           {!clientSeated
             ? isLobby
               ? "You're watching. Tap an open seat to join the game."
-              : "You're watching this match. Tap an open seat to join next round."
+              : "You're watching this match. The host can admit you for the next round."
             : !clientActive
               ? "You're seated. Your cards join next round."
               : null}
@@ -397,80 +365,48 @@ export function GameBoard({
           <PlayingHand
             key={revealKey}
             cards={hand}
-             isMyTurn={isPlaying && isMyTurn && !isPaused}
+            playKey={`${roomState.roomId}:${roomState.gameConfig.roundNumber}:${roomState.currentRound?.tricksHistory?.length ?? 0}`}
+            playContext={{ expectedRound: roomState.gameConfig.roundNumber, expectedStatus: "TRICK_PLAYING", expectedTurnIndex: roomState.gameConfig.currentTurnIndex, expectedTrickIndex: roomState.currentRound?.tricksHistory?.length ?? 0 }}
+            isMyTurn={isPlaying && isMyTurn && !isPaused && connected}
             legalCardIds={legalCardIds}
-            onPlayCard={isPlaying && isMyTurn ? onPlayCard : undefined}
+            onPlayCard={isPlaying && isMyTurn && !isPaused && connected ? onPlayCard : undefined}
             dropZoneRef={dropZoneRef}
             onDragStateChange={setIsDragging}
             revealDeal={revealKey > 0 && dealPhase === "settled" && isPreBidding}
           />
         </div>
       )}
+      </div>
+      <div className="room-table-spacer" aria-hidden="true" />
+      </div>
 
-      {isSummary && (
-        <div className="overlay">
-          <Scoreboard
-            roomState={roomState}
-            clientPlayerId={clientPlayerId}
-            action={
-              <>
-                <span className="chip">
-                  Next round in{" "}
-                  <strong>
-                    <Seconds endsAt={timerEndsAt} />s
-                  </strong>
-                </span>
-                {isAdmin && (
-                  <button type="button" className="btn-primary" onClick={openHostControls}>
-                    Start now
-                  </button>
-                )}
-              </>
-            }
-          />
-        </div>
-      )}
-
-      {isGameOver && (
-        <div className="overlay">
-          <Scoreboard
-            roomState={roomState}
-            clientPlayerId={clientPlayerId}
-            action={
-              <>
-                <button type="button" className="btn-ghost" onClick={onLeaveRoom}>
-                  Return to main menu
-                </button>
-                {isAdmin ? (
-                  <button type="button" className="btn-primary" onClick={onRematch}>
-                    Rematch
-                  </button>
-                ) : (
-                  <span className="chip">Waiting for the host to start a rematch</span>
-                )}
-              </>
-            }
-          />
-        </div>
-      )}
+      <p className="room-sr-only" role="status">{effects.ace ? `${effects.ace.name} played an ace${effects.ace.kind === "trump" ? " of the trump suit" : ""}.` : effects.bid ? `Bid ${effects.bid.value} locked.` : ""}</p>
 
       {adminOpen && (
         <motion.div
           className="overlay overlay--admin"
           role="dialog"
           aria-modal="true"
-          aria-label="Host controls"
+          aria-labelledby="room-host-title"
+          id="room-host-dialog"
+          ref={adminDialogRef}
+          onMouseDown={(event) => { if (event.target === event.currentTarget) setAdminOpen(false); }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.16 }}
         >
             <AdminRoundControl
               roomState={roomState}
+              isConnected={connected}
+              busy={!!hostPending}
+              externalError={hostError}
               onStartGame={onStartGame}
-              onStartBidding={onStartBidding}
-              onTogglePause={onTogglePause}
+              onSetPaused={onSetPaused}
               onKickPlayer={onKickPlayer}
+              onAdmitPlayer={onAdmitPlayer}
               onNextRound={onNextRound}
+              onConfigureNextRound={onConfigureNextRound}
+              onRematch={onRematch}
               onClose={() => setAdminOpen(false)}
             />
         </motion.div>
@@ -482,5 +418,6 @@ export function GameBoard({
         onConfirm={onLeaveRoom}
       />
     </div>
+    </LayoutGroup>
   );
 }

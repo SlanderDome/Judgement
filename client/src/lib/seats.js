@@ -16,6 +16,9 @@ export function currentTurnPlayer(roomState) {
 }
 
 export function dealerPlayer(roomState) {
+  if (Number.isInteger(roomState.currentRound?.dealerSeatIndex)) {
+    return roomState.players.find(player => player.seatIndex === roomState.currentRound.dealerSeatIndex && !player.pendingNextRound) ?? null;
+  }
   return seatedPlayers(roomState)[roomState.gameConfig.dealerIndex] ?? null;
 }
 

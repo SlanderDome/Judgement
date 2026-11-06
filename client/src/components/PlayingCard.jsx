@@ -1,5 +1,5 @@
-import { memo } from "react";
-import { motion } from "framer-motion";
+import { memo, useEffect, useRef } from "react";
+import { animate, motion, useMotionValue, useReducedMotion } from "framer-motion";
 import { CARD_BACK, getCardAsset } from "../lib/cards.js";
 
 const SUIT_LABEL = {
@@ -21,15 +21,31 @@ function PlayingCardComponent({
   isTableCard = false,
   isWinning = false,
   isDraggable = false,
+  isPending = false,
+  dropZoneRef,
   rotation = 0,
   y = 0,
   pointerTilt = 0,
+  aceKind = null,
   onClick,
   onMouseEnter,
   onMouseLeave,
   onDragStart,
   onDragEnd
 }) {
+  const reduced = useReducedMotion();
+  const x = useMotionValue(0);
+  const dragY = useMotionValue(0);
+  const buttonRef = useRef(null);
+  const suppressClick = useRef(false);
+  const returnTransition = reduced ? { duration: 0 } : { type: "spring", stiffness: 320, damping: 32 };
+  useEffect(() => {
+    if (!isPending) {
+      const horizontal = animate(x, 0, returnTransition);
+      const vertical = animate(dragY, isSelected ? y - 18 : y, returnTransition);
+      return () => { horizontal.stop(); vertical.stop(); };
+    }
+  }, [isPending, isSelected, y, reduced]);
   const src = faceDown ? CARD_BACK : getCardAsset(card);
   const altText = faceDown
     ? "Face-down card"
@@ -46,51 +62,52 @@ function PlayingCardComponent({
         faceDown ? "is-face-down" : "",
         isPlayable ? "playable" : "",
         isSelected ? "selected" : "",
+        isPending ? "is-pending" : "",
         isTableCard && isWinning ? "is-winning" : ""
       ].join(" ")}
       data-card-id={card?.id}
+      ref={buttonRef}
+      style={{ x, y: dragY, touchAction: isDraggable ? "none" : "auto" }}
       disabled={disabled || isTableCard || !onClick}
-      onClick={onClick}
+      onClick={(event) => { if (!suppressClick.current && !isPending) onClick?.(event); }}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
       initial={
-        reveal
-          ? { opacity: 0, y: 30, rotate: rotation, rotateX: 0, rotateY: -82, scale: 0.9 }
-          : {
-              opacity: 0,
-              y: isTableCard ? 28 : 80,
-              rotate: isTableCard ? rotation - 8 : rotation,
-              rotateX: isTableCard ? 10 : 0,
-              scale: isTableCard ? 0.92 : 0.82
-            }
+        reduced || isTableCard ? false : { opacity: 0, rotate: rotation }
       }
       animate={{
         opacity: 1,
-        y: isSelected ? y - 34 : y,
         rotate: isSelected ? 0 : rotation + pointerTilt,
-        rotateX: isSelected ? -8 : 0,
-        rotateY: 0,
-        scale: isSelected ? 1.14 : 1,
         zIndex: isSelected ? 140 : undefined
       }}
-      whileHover={!disabled ? { y: y - 22, rotate: rotation + pointerTilt * 0.5, scale: 1.06 } : undefined}
-      whileTap={!disabled ? { scale: 0.98, y: y - 18 } : undefined}
+      whileHover={!disabled && !isPending ? { y: y - 10 } : undefined}
+      whileTap={!disabled && !isPending ? { y: y - 12 } : undefined}
       drag={isDraggable && !disabled}
-      dragSnapToOrigin={isDraggable}
+      dragSnapToOrigin={false}
       dragElastic={0.08}
       dragMomentum={false}
       dragTransition={{ bounceStiffness: 300, bounceDamping: 30 }}
       whileDrag={{
-        scale: 1.08,
         zIndex: 150,
         rotate: 0,
-        rotateX: -10,
-        y: 0,
         boxShadow: "0 20px 36px rgba(0, 0, 0, 0.46), 0 0 0 2px var(--gold-light)"
       }}
-      onDragStart={onDragStart}
-      onDragEnd={(event, info) => onDragEnd?.(info)}
-      transition={{ type: "spring", stiffness: 300, damping: 30, delay }}
+      onDragStart={() => { suppressClick.current = true; onDragStart?.(); }}
+      onDragEnd={(event, info) => {
+        const accepted = onDragEnd?.(info, event);
+        const zone = dropZoneRef?.current;
+        if (accepted && zone && buttonRef.current) {
+          const target = zone.getBoundingClientRect();
+          const cardBounds = buttonRef.current.getBoundingClientRect();
+          animate(x, x.get() + target.left + target.width / 2 - cardBounds.left - cardBounds.width / 2, returnTransition);
+          animate(dragY, dragY.get() + target.top + target.height / 2 - cardBounds.top - cardBounds.height / 2, returnTransition);
+        } else {
+          animate(x, 0, returnTransition);
+          animate(dragY, y, returnTransition);
+        }
+        window.setTimeout(() => { suppressClick.current = false; }, 0);
+      }}
+      transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 300, damping: 30, delay: reveal ? delay : 0 }}
       aria-label={`${altText}${ownerName ? ` played by ${ownerName}` : ""}`}
     >
       <img
@@ -99,6 +116,7 @@ function PlayingCardComponent({
         alt=""
         draggable={false}
       />
+      {aceKind && <span className="ace-card-reflection" aria-hidden="true" />}
     </motion.button>
   );
 }

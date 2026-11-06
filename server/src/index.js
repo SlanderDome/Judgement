@@ -48,10 +48,12 @@ app.get("*", (req, res, next) => {
   });
 });
 
-const port = Number(process.env.PORT || 3001);
+// Keep the local dev socket off common IDE/browser-proxy ports. Production and
+// the single-process deployment retain the documented 3001 default.
+const defaultPort = process.argv.includes("--dev") ? 3107 : 3001;
+const port = Number(process.env.PORT || defaultPort);
 const host = "0.0.0.0";
 
 httpServer.listen(port, host, () => {
   console.log(`Judgement server listening on ${host}:${port}`);
 });
-

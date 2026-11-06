@@ -5,7 +5,7 @@ import { CARD_BACK } from "../lib/cards.js";
 // A small face-down fan of card backs tucked beside an opponent's seat for the
 // round. Purely decorative. The real count lives on the seat badge, so it is
 // capped at a few cards regardless of hand size.
-const MAX_VISIBLE = 5;
+const MAX_VISIBLE = 3;
 
 function SeatCardFanComponent({ count, above = false }) {
   const n = Math.min(Math.max(Math.round(count ?? 0), 0), MAX_VISIBLE);

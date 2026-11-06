@@ -6,16 +6,17 @@ const SocketContext = createContext(null);
 
 const SERVER_URL =
   import.meta.env.VITE_SOCKET_URL ||
-  (import.meta.env.DEV ? "http://127.0.0.1:3001" : undefined);
+  (import.meta.env.DEV ? "http://127.0.0.1:3107" : undefined);
 
 const socket = io(SERVER_URL, {
-  autoConnect: true
+  autoConnect: false
 });
 
 export function SocketProvider({ children }) {
   const [isConnected, setIsConnected] = useState(socket.connected);
 
   useEffect(() => {
+    socket.connect();
     if (socket.connected) {
       setIsConnected(true);
     }

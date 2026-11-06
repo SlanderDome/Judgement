@@ -26,8 +26,9 @@ async function copyText(text) {
   }
 }
 
-export function RoomCodeButton({ roomId }) {
+export function RoomCodeButton({ roomId, disabled = false }) {
   const [copied, setCopied] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
   const timeoutRef = useRef(null);
 
   useEffect(() => () => window.clearTimeout(timeoutRef.current), []);
@@ -38,12 +39,10 @@ export function RoomCodeButton({ roomId }) {
       return;
     }
     const ok = await copyText(text);
-    if (!ok) {
-      return;
-    }
-    setCopied(true);
+    setCopied(ok);
+    setCopyFailed(!ok);
     window.clearTimeout(timeoutRef.current);
-    timeoutRef.current = window.setTimeout(() => setCopied(false), 1600);
+    timeoutRef.current = window.setTimeout(() => { setCopied(false); setCopyFailed(false); }, 2400);
   }
 
   return (
@@ -51,10 +50,11 @@ export function RoomCodeButton({ roomId }) {
       type="button"
       className={`gh-item gh-room room-code-btn ${copied ? "is-copied" : ""}`}
       onClick={handleCopy}
-      title={copied ? "Copied!" : "Copy room code"}
+      disabled={disabled}
+      title={copyFailed ? `Copy failed. Select and copy ${roomId} manually.` : copied ? "Copied!" : "Copy room code"}
       aria-label={copied ? "Room code copied to clipboard" : `Copy room code ${roomId}`}
     >
-      <span className="gh-room-label">Room</span>
+      <span className="gh-room-label" role="status">{copyFailed ? "Copy failed" : copied ? "Copied" : "Room"}</span>
       <strong className="room-code">{roomId}</strong>
       <span className="room-code-tag" aria-hidden="true">
         {copied ? (

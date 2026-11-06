@@ -6,7 +6,7 @@ const SUIT_PIPS = {
   NO_TRUMP: { pip: "NT", name: "No Trump", red: false }
 };
 
-export function TrumpIndicator({ roomState }) {
+export function TrumpIndicator({ roomState, showName = false }) {
   const trumpSuit = roomState.gameConfig?.trumpSuit;
   if (!trumpSuit) return null;
 
@@ -18,6 +18,7 @@ export function TrumpIndicator({ roomState }) {
       <span className="trump-pip" aria-label={meta.name}>
         {meta.pip}
       </span>
+      {showName && <span className="trump-name">{meta.name}</span>}
     </span>
   );
 }

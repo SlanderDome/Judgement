@@ -10,9 +10,13 @@ const SUIT_PIPS = {
   HEARTS: "♥"
 };
 
-export function PlayingHand({ cards, isMyTurn, legalCardIds, onPlayCard, dropZoneRef, onDragStateChange, revealDeal = false }) {
+export function PlayingHand({ cards, isMyTurn, legalCardIds, onPlayCard, dropZoneRef, onDragStateChange, revealDeal = false, playKey, playContext }) {
   const [selectedCardId, setSelectedCardId] = useState(null);
   const [hoveredCardId, setHoveredCardId] = useState(null);
+  const [pendingCardId, setPendingCardId] = useState(null);
+  const [playError, setPlayError] = useState("");
+  const pendingRef = useRef(null);
+  const attemptRef = useRef(0);
   const [fan, setFan] = useState({ overlap: 0, cardWidth: null, overflowing: false });
   const handRef = useRef(null);
   const baseCardWidthRef = useRef(null);
@@ -20,12 +24,53 @@ export function PlayingHand({ cards, isMyTurn, legalCardIds, onPlayCard, dropZon
 
   const selectedCard = cards.find((card) => card.id === selectedCardId);
 
+  useEffect(() => {
+    if (pendingRef.current && !cards.some(card => card.id === pendingRef.current)) {
+      pendingRef.current = null;
+      setPendingCardId(null);
+      attemptRef.current += 1;
+      onDragStateChange?.(false);
+    }
+  }, [cards]);
+
+  useEffect(() => {
+    pendingRef.current = null;
+    setPendingCardId(null);
+    setSelectedCardId(null);
+    setPlayError("");
+    attemptRef.current += 1;
+    return () => { attemptRef.current += 1; };
+  }, [playKey]);
+
+  function submitCard(cardId) {
+    if (pendingRef.current || !isMyTurn || !legalCardIds.has(cardId) || !onPlayCard) return false;
+    pendingRef.current = cardId;
+    setPendingCardId(cardId);
+    setSelectedCardId(null);
+    setPlayError("");
+    const attempt = ++attemptRef.current;
+    Promise.resolve().then(() => onPlayCard(cardId, playContext)).then(result => {
+      if (attempt !== attemptRef.current || result?.success) return;
+      pendingRef.current = null;
+      setPendingCardId(null);
+      setPlayError(result?.message ?? "Your play was not confirmed. Please try again.");
+      onDragStateChange?.(false);
+    }).catch(() => {
+      if (attempt !== attemptRef.current) return;
+      pendingRef.current = null;
+      setPendingCardId(null);
+      setPlayError("Unable to play this card. Check your connection and try again.");
+      onDragStateChange?.(false);
+    });
+    return true;
+  }
+
   function isCardPlayable(card) {
-    return isMyTurn && legalCardIds.has(card.id);
+    return isMyTurn && !pendingCardId && legalCardIds.has(card.id);
   }
 
   function handleCardClick(cardId) {
-    if (!isMyTurn || !legalCardIds.has(cardId)) {
+    if (!isMyTurn || pendingRef.current || !legalCardIds.has(cardId)) {
       return;
     }
 
@@ -38,18 +83,6 @@ export function PlayingHand({ cards, isMyTurn, legalCardIds, onPlayCard, dropZon
     });
   }
 
-  function handleCardMove(cardId, event) {
-    if (!isMyTurn || !legalCardIds.has(cardId)) {
-      return;
-    }
-
-    const rect = event.currentTarget.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const offset = rect.width > 0 ? (x / rect.width - 0.5) * 12 : 0;
-    const tilt = Math.max(-6, Math.min(6, offset));
-    event.currentTarget.style.setProperty("--pointer-tilt", `${tilt}deg`);
-  }
-
   function handleCardLeave(event) {
     setHoveredCardId(null);
     event.currentTarget.style.removeProperty("--pointer-tilt");
@@ -60,32 +93,30 @@ export function PlayingHand({ cards, isMyTurn, legalCardIds, onPlayCard, dropZon
       return;
     }
 
-    onPlayCard?.(selectedCard.id);
-    setSelectedCardId(null);
+    submitCard(selectedCard.id);
   }
 
-  function handleDragEnd(cardId, info) {
-    onDragStateChange?.(false);
-
+  function handleDragEnd(cardId, info, event) {
     const zone = dropZoneRef?.current;
     if (!zone) {
-      return;
+      onDragStateChange?.(false);
+      return false;
     }
 
     const rect = zone.getBoundingClientRect();
-    const { x, y } = info.point;
+    const x = event.clientX ?? info.point.x - window.scrollX;
+    const y = event.clientY ?? info.point.y - window.scrollY;
     const isOverTable = x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
 
-    if (isOverTable && legalCardIds.has(cardId)) {
-      onPlayCard?.(cardId);
-      setSelectedCardId(null);
-    }
+    if (isOverTable && submitCard(cardId)) return true;
+    onDragStateChange?.(false);
+    return false;
   }
 
   // Keyboard: number keys address the first ten cards. Arrow keys cover larger
   // hands, and Enter confirms the selected card.
   const playKbRef = useRef({});
-  playKbRef.current = { isMyTurn, legalCardIds, onPlayCard, cards, selectedCardId };
+  playKbRef.current = { isMyTurn: isMyTurn && !pendingCardId, legalCardIds, onPlayCard: submitCard, cards, selectedCardId };
   useEffect(() => {
     function handleKey(event) {
       if (event.defaultPrevented || event.repeat || event.metaKey || event.ctrlKey || event.altKey) {
@@ -95,7 +126,7 @@ export function PlayingHand({ cards, isMyTurn, legalCardIds, onPlayCard, dropZon
       if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) {
         return;
       }
-      if (document.querySelector(".overlay")) {
+      if (document.querySelector(".overlay") || target?.closest?.(".room-navbar")) {
         return; // a modal / scoreboard is open
       }
       const state = playKbRef.current;
@@ -156,7 +187,17 @@ export function PlayingHand({ cards, isMyTurn, legalCardIds, onPlayCard, dropZon
         viewportWidthRef.current = window.innerWidth;
         baseCardWidthRef.current = null;
       }
-      const measuredWidth = cardEl ? cardEl.getBoundingClientRect().width : 92;
+      // Measure the untransformed CSS baseline, not the previous fitted width or
+      // a hovered/selected card. Otherwise resizing carries desktop card sizes
+      // into the mobile hand and each rotation can inflate the next measurement.
+      let measuredWidth = 92;
+      if (cardEl) {
+        const fittedWidth = container.style.getPropertyValue("--hand-card-width");
+        container.style.setProperty("--hand-card-width", "var(--card-w-hand)");
+        measuredWidth = Number.parseFloat(window.getComputedStyle(cardEl).width) || 92;
+        if (fittedWidth) container.style.setProperty("--hand-card-width", fittedWidth);
+        else container.style.removeProperty("--hand-card-width");
+      }
       const cardWidth = baseCardWidthRef.current ?? measuredWidth;
       baseCardWidthRef.current ??= measuredWidth;
       const available = Math.max(0, container.clientWidth - 32);
@@ -211,7 +252,7 @@ export function PlayingHand({ cards, isMyTurn, legalCardIds, onPlayCard, dropZon
             const playable = isCardPlayable(card);
             const isSelected = selectedCardId === card.id;
             const isHovered = hoveredCardId === card.id;
-            const zIndex = isSelected ? 120 : isHovered ? 100 : index + 1;
+            const zIndex = pendingCardId === card.id ? 150 : isSelected ? 120 : isHovered ? 100 : index + 1;
 
             return (
               <motion.div
@@ -221,7 +262,8 @@ export function PlayingHand({ cards, isMyTurn, legalCardIds, onPlayCard, dropZon
                   zIndex,
                   marginLeft: index === 0 ? 0 : -fan.overlap
                 }}
-                layout
+                  layout="position"
+                  transition={{ type: "spring", stiffness: 320, damping: 32 }}
               >
                 <PlayingCard
                   card={card}
@@ -231,6 +273,8 @@ export function PlayingHand({ cards, isMyTurn, legalCardIds, onPlayCard, dropZon
                   isPlayable={playable}
                   isSelected={isSelected}
                   isDraggable={playable}
+                  isPending={pendingCardId === card.id}
+                  dropZoneRef={dropZoneRef}
                   rotation={rotation}
                   y={y}
                   onClick={() => handleCardClick(card.id)}
@@ -240,10 +284,9 @@ export function PlayingHand({ cards, isMyTurn, legalCardIds, onPlayCard, dropZon
                       playSfx("hover");
                     }
                   }}
-                  onMouseMove={(event) => handleCardMove(card.id, event)}
                    onMouseLeave={handleCardLeave}
                   onDragStart={() => onDragStateChange?.(true)}
-                  onDragEnd={(info) => handleDragEnd(card.id, info)}
+                  onDragEnd={(info, event) => handleDragEnd(card.id, info, event)}
                  />
               </motion.div>
             );
@@ -256,7 +299,7 @@ export function PlayingHand({ cards, isMyTurn, legalCardIds, onPlayCard, dropZon
 
       <div className="play-action-slot" aria-live="polite">
         <AnimatePresence>
-          {selectedCard && (
+          {selectedCard && !pendingCardId && (
             <motion.button
               type="button"
               className="play-fab btn-primary"
@@ -271,6 +314,8 @@ export function PlayingHand({ cards, isMyTurn, legalCardIds, onPlayCard, dropZon
             </motion.button>
           )}
         </AnimatePresence>
+        {pendingCardId && <p className="hand-play-pending">Playing card…</p>}
+        {playError && <p className="hand-play-error" role="alert">{playError}</p>}
       </div>
     </section>
   );

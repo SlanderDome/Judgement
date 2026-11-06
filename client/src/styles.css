@@ -3647,3 +3647,67 @@ input:focus {
     margin-left: 0;
   }
 }
+
+/* Keep room details and controls clear of the table's seat and card ring. */
+@media (min-width: 861px) {
+  .game-layout {
+    grid-template-columns: clamp(170px, 17vw, 220px) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+    column-gap: clamp(16px, 2vw, 28px);
+  }
+
+  .game-header {
+    grid-column: 1;
+    grid-row: 1 / -1;
+    z-index: 10;
+    align-self: start;
+    width: 100%;
+    margin: 0;
+    padding: 16px;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 1rem;
+    border: 1px solid rgba(231, 207, 143, 0.16);
+    border-radius: 18px;
+  }
+
+  .game-header__meta,
+  .game-header__actions {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 0.6rem;
+  }
+
+  .game-header .gh-item,
+  .game-header .gh-state {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    padding: 0.4rem 0.5rem;
+    border-radius: 8px;
+  }
+
+  .game-header .connection-dot-badge,
+  .game-header .sound-toggle {
+    align-self: flex-start;
+  }
+
+  .game-header-actions .btn-sm {
+    min-height: 36px;
+    text-align: left;
+  }
+
+  .game-layout > .table-wrap {
+    grid-column: 2;
+    grid-row: 1;
+    padding: clamp(36px, 6vh, 56px) clamp(24px, 3vw, 48px);
+  }
+
+  .game-layout > .self-area,
+  .game-layout > .spectator-bar {
+    grid-column: 2;
+    grid-row: 2;
+  }
+}

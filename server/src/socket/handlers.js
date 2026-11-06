@@ -60,8 +60,49 @@ function emitError(socket, message, code = "BAD_REQUEST") {
   socket.emit("game:error", { message, code });
 }
 
+function reply(acknowledge, response) {
+  if (typeof acknowledge === "function") acknowledge(response);
+}
+
 export function registerSocketHandlers(io) {
   io.on("connection", (socket) => {
+    // Every room action must come from the socket currently owning that seat.
+    socket.use(([event, payload, acknowledge], next) => {
+      if (!event.startsWith("game:") && !["seat:take", "seat:leave", "room:kick", "room:admit", "room:leave"].includes(event)) {
+        return next();
+      }
+      const player = roomManager.getRoom(payload?.roomId)?.players.find(
+        (entry) => entry.playerId === payload?.playerId
+      );
+      if (!player || player.socketId !== socket.id) {
+        emitError(socket, "This tab no longer owns the session. Reload to reconnect.", "SESSION_CONFLICT");
+        reply(acknowledge, { success: false, code: "SESSION_CONFLICT", message: "This tab no longer owns the session. Reload to reconnect." });
+        return;
+      }
+      next();
+    });
+
+    function hostAction(event, errorCode, action) {
+      socket.on(event, (payload = {}, acknowledge) => {
+        try {
+          const room = action(payload);
+          emitRoomState(io, room);
+          scheduleRoomTimeout(io, room.roomId);
+          reply(acknowledge, { success: true, status: room.status, roundNumber: room.gameConfig.roundNumber });
+        } catch (error) {
+          emitError(socket, error.message, errorCode);
+          reply(acknowledge, { success: false, code: errorCode, message: error.message });
+        }
+      });
+    }
+
+    hostAction("room:admit", "ADMISSION_REJECTED", payload => roomManager.admitPlayer(payload.roomId, payload.playerId, payload.targetPlayerId, payload));
+    hostAction("game:start", "GAME_START_REJECTED", payload => roomManager.startGame(payload.roomId, payload.playerId, payload));
+    hostAction("game:start_bidding", "START_BIDDING_REJECTED", payload => roomManager.startBidding(payload.roomId, payload.playerId, payload));
+    hostAction("game:toggle_pause", "PAUSE_REJECTED", payload => roomManager.togglePause(payload.roomId, payload.playerId, payload));
+    hostAction("game:next_round", "ROUND_ADVANCE_REJECTED", payload => roomManager.advanceRound(payload.roomId, payload.playerId, payload));
+    hostAction("game:configure_next_round", "ROUND_SETUP_REJECTED", payload => roomManager.configureNextRound(payload.roomId, payload.playerId, payload));
+    hostAction("game:rematch", "REMATCH_REJECTED", payload => roomManager.rematch(payload.roomId, payload.playerId, payload));
     socket.on("room:create", ({ nickname, playerId } = {}) => {
       const { room, player } = roomManager.createRoom({
         nickname,
@@ -79,8 +120,16 @@ export function registerSocketHandlers(io) {
       });
     });
 
-    socket.on("room:join", ({ roomId, nickname, playerId } = {}) => {
+    socket.on("room:join", ({ roomId, nickname, playerId, resume } = {}) => {
       try {
+        const existingRoom = roomManager.getRoom(roomId);
+        if (resume && existingRoom && !existingRoom.players.some((entry) => entry.playerId === playerId)) {
+          emitError(socket, "Your seat is no longer in this room.", "SESSION_INVALID");
+          return;
+        }
+        const previousSocketId = roomManager.getRoom(roomId)?.players.find(
+          (entry) => entry.playerId === playerId
+        )?.socketId;
         const { room, player, reconnected } = roomManager.joinRoom({
           roomId,
           nickname,
@@ -88,6 +137,12 @@ export function registerSocketHandlers(io) {
           socketId: socket.id
         });
 
+        if (previousSocketId && previousSocketId !== socket.id) {
+          io.to(previousSocketId).emit("room:session_conflict", {
+            message: "This seat was reconnected in another tab or device. Reload this tab to reclaim it."
+          });
+          io.sockets.sockets.get(previousSocketId)?.leave(room.roomId);
+        }
         socket.join(room.roomId);
         emitRoomState(io, room);
         scheduleRoomTimeout(io, room.roomId);
@@ -117,9 +172,10 @@ export function registerSocketHandlers(io) {
         return;
       }
 
-      existingPlayer.socketId = socket.id;
-      existingPlayer.isOnline = true;
-      socket.join(room.roomId);
+      if (existingPlayer.socketId !== socket.id) {
+        emitError(socket, "This tab no longer owns the session. Reload to reclaim it.", "SESSION_CONFLICT");
+        return;
+      }
 
       emitRoomState(io, room);
       scheduleRoomTimeout(io, room.roomId);
@@ -145,9 +201,9 @@ export function registerSocketHandlers(io) {
       }
     });
 
-    socket.on("room:kick", ({ roomId, playerId, targetPlayerId } = {}) => {
+    socket.on("room:kick", ({ roomId, playerId, targetPlayerId, ...context } = {}, acknowledge) => {
       try {
-        const { room, player } = roomManager.kickPlayer(roomId, playerId, targetPlayerId);
+        const { room, player } = roomManager.kickPlayer(roomId, playerId, targetPlayerId, context);
         if (player.socketId) {
           io.to(player.socketId).emit("room:kicked", {
             message: "The host removed you from the room."
@@ -156,8 +212,10 @@ export function registerSocketHandlers(io) {
         }
         emitRoomState(io, room);
         scheduleRoomTimeout(io, roomId);
+        reply(acknowledge, { success: true });
       } catch (error) {
         emitError(socket, error.message, "KICK_REJECTED");
+        reply(acknowledge, { success: false, message: error.message, code: "KICK_REJECTED" });
       }
     });
 
@@ -177,53 +235,27 @@ export function registerSocketHandlers(io) {
       acknowledge?.({ success: true });
     });
 
-    socket.on("game:start", ({ roomId, playerId, cardsInRound, trumpSuit } = {}) => {
+    socket.on("game:bid", ({ roomId, playerId, bid, ...context } = {}, acknowledge) => {
       try {
-        const room = roomManager.startGame(roomId, playerId, { cardsInRound, trumpSuit });
+        const room = roomManager.submitBid(roomId, playerId, bid, context);
         emitRoomState(io, room);
         scheduleRoomTimeout(io, roomId);
-      } catch (error) {
-        emitError(socket, error.message, "GAME_START_REJECTED");
-      }
-    });
-
-    socket.on("game:bid", ({ roomId, playerId, bid } = {}) => {
-      try {
-        const room = roomManager.submitBid(roomId, playerId, bid);
-        emitRoomState(io, room);
-        scheduleRoomTimeout(io, roomId);
+        reply(acknowledge, { success: true, bid });
       } catch (error) {
         emitError(socket, error.message, "BID_REJECTED");
+        reply(acknowledge, { success: false, code: "BID_REJECTED", message: error.message });
       }
     });
 
-    socket.on("game:play_card", ({ roomId, playerId, cardId } = {}) => {
+    socket.on("game:play_card", ({ roomId, playerId, cardId } = {}, acknowledge) => {
       try {
         const room = roomManager.playCard(roomId, playerId, cardId);
         emitRoomState(io, room);
         scheduleRoomTimeout(io, roomId);
+        reply(acknowledge, { success: true, cardId });
       } catch (error) {
         emitError(socket, error.message, "CARD_REJECTED");
-      }
-    });
-
-    socket.on("game:start_bidding", ({ roomId, playerId } = {}) => {
-      try {
-        const room = roomManager.startBidding(roomId, playerId);
-        emitRoomState(io, room);
-        scheduleRoomTimeout(io, roomId);
-      } catch (error) {
-        emitError(socket, error.message, "START_BIDDING_REJECTED");
-      }
-    });
-
-    socket.on("game:toggle_pause", ({ roomId, playerId } = {}) => {
-      try {
-        const room = roomManager.togglePause(roomId, playerId);
-        emitRoomState(io, room);
-        scheduleRoomTimeout(io, roomId);
-      } catch (error) {
-        emitError(socket, error.message, "PAUSE_REJECTED");
+        reply(acknowledge, { success: false, code: "CARD_REJECTED", message: error.message });
       }
     });
 
@@ -234,26 +266,6 @@ export function registerSocketHandlers(io) {
         scheduleRoomTimeout(io, roomId);
       } catch (error) {
         emitError(socket, error.message, "REORDER_REJECTED");
-      }
-    });
-
-    socket.on("game:next_round", ({ roomId, playerId, cardsInRound, trumpSuit, action } = {}) => {
-      try {
-        const room = roomManager.advanceRound(roomId, playerId, { cardsInRound, trumpSuit, action });
-        emitRoomState(io, room);
-        scheduleRoomTimeout(io, roomId);
-      } catch (error) {
-        emitError(socket, error.message, "ROUND_ADVANCE_REJECTED");
-      }
-    });
-
-    socket.on("game:rematch", ({ roomId, playerId } = {}) => {
-      try {
-        const room = roomManager.rematch(roomId, playerId);
-        emitRoomState(io, room);
-        scheduleRoomTimeout(io, roomId);
-      } catch (error) {
-        emitError(socket, error.message, "REMATCH_REJECTED");
       }
     });
 
