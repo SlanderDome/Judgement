@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Judgement - Host table concept</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
+  <style>
+    @font-face { font-family:Quentin; src:url('client/public/fonts/QuentinCaps.ttf') format('truetype'); font-display:swap; }
+    :root { color-scheme:dark; --cream:#f7efdc; --gold:#e5c98a; --muted:#b6c1ad; --line:#e7d4a52b; }
+    * { box-sizing:border-box; } html { scrollbar-gutter:stable; }
+    body { margin:0; background:#071b15; color:var(--cream); font-family:'DM Sans',sans-serif; }
+    button,select,input { font:inherit; } button { cursor:pointer; } button:disabled { cursor:not-allowed; opacity:.45; }
+    button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visible { outline:2px solid #f7efdc; outline-offset:4px; }
+    button { border:1px solid #e5d3a344; border-radius:8px; padding:11px 15px; background:#143528; color:#efdfb9; font-size:12px; min-height:44px; transition:transform .2s ease,background .2s ease; }
+    button:hover:not(:disabled) { background:#294e3a; } button:active:not(:disabled) { transform:scale(.98); }
+    .primary { background:#e3c68b; color:#261f11; border-color:#f0dcaa; font-weight:700; }.primary:hover:not(:disabled) { background:#efdaa8; }
+    .danger { color:#f4b5a7; border-color:#d89b8855; }.danger:hover:not(:disabled) { background:#512c26; }
+    .scene { min-height:100dvh; position:relative; overflow:hidden; background:radial-gradient(ellipse at 50% 23%,#32694c 0%,#133e2c 26%,#09241a 58%,#061510 100%); }
+    .scene:before { content:''; position:absolute; inset:0; background:radial-gradient(ellipse at 50% -10%,#fff0ba38,transparent 52%),radial-gradient(ellipse at 50% 55%,transparent 35%,#03110bbb 100%); pointer-events:none; }
+    header { position:relative; z-index:2; max-width:1500px; margin:auto; padding:16px 5%; min-height:76px; display:flex; justify-content:space-between; align-items:center; gap:20px; border-bottom:1px solid #e3d3a51c; }
+    .brand { font:27px Quentin,'Cormorant Garamond',serif; letter-spacing:.09em; color:#f6e4bb; white-space:nowrap; }.brand span { font-family:serif; color:var(--gold); margin-right:10px; }
+    .nav { display:flex; align-items:center; gap:18px; }.metric { display:grid; gap:4px; font-size:12px; white-space:nowrap; }.metric small { color:#b9c6b4; text-transform:uppercase; font-size:9px; letter-spacing:.14em; }.metric strong { color:#eedbb2; font-weight:600; font-variant-numeric:tabular-nums; }.heart { color:#e19891; }
+    .nav button { white-space:nowrap; background:#102e24; border-color:#e4cd9459; color:#ead8b0; }
+    .nav button.primary { background:#dfc38a; border-color:#f0dcaa; color:#241b0e; }
+    .nav button.primary:hover:not(:disabled) { background:#efdaa7; }
+    .start-slot { width:148px; flex:none; }.start-slot button { width:100%; padding-inline:10px; }
+    .score-anchor { position:relative; }
+    .host-toggle { border-color:#ddc17d99; }.host-toggle[aria-expanded="true"] { background:#dfc48b; color:#241c10; }.badge { padding:2px 6px; border-radius:4px; margin-left:5px; background:#e8d09c; color:#281f12; font-weight:700; }
+    .intro { position:relative; text-align:center; padding:38px 20px 0; } h1 { font:600 clamp(36px,4vw,56px)/1 'Cormorant Garamond',serif; letter-spacing:.01em; margin:10px 0 6px; }.intro p { font-size:13px; color:#c7d1bf; margin:0; }
+    /* Match design-concept.html's frame and stage geometry at every breakpoint.
+       Layer order: materials 0, center 1, seats 2, scores 3, backdrop 4, host 5. */
+    .table-frame { position:relative; max-width:1600px; margin:0 auto; padding:28px 5% 55px; display:grid; grid-template-columns:160px minmax(0,1fr) 160px; gap:14px; align-items:center; }
+    .table-wrap { min-width:0; position:relative; width:100%; padding:65px 0 60px; }
+    .table-area { position:relative; }
+    .table { width:100%; aspect-ratio:1.85; position:relative; border-radius:50%; padding:clamp(18px,2.4vw,34px); background:repeating-linear-gradient(105deg,#d6b18106 0 2px,#150e080c 3px 7px,transparent 8px 15px),linear-gradient(145deg,#84603c,#4c321f 17%,#302015 36%,#624329 58%,#291c13 80%,#795735); box-shadow:0 38px 38px #000a,0 14px 0 #21140d,0 19px 0 #100e0a,inset 0 3px 3px #f9dda17a,inset 0 -7px 14px #0009; }
+    .table:before { content:''; position:absolute; inset:8px; border:1px solid #d6bb8270; border-radius:inherit; box-shadow:inset 0 1px #fff2,0 0 0 1px #382518; pointer-events:none; }
+    .felt { width:100%; height:100%; overflow:hidden; border-radius:50%; position:relative; border:clamp(6px,.85vw,12px) solid #143727; background:radial-gradient(ellipse at 50% 24%,#308b65,#126147 42%,#08432f 77%,#052b20); box-shadow:0 0 0 1px #c8a96ba6,0 0 0 4px #291c13,inset 0 7px 20px #001b11b8,inset 0 0 45px #00180dbb; }
+    .felt:before { content:''; position:absolute; inset:0; background:repeating-linear-gradient(35deg,#ffffff08 0 1px,transparent 1px 4px),radial-gradient(ellipse at 50% 10%,#f5e6ae20,transparent 55%); pointer-events:none; }
+    .inlay { position:absolute; inset:8%; border:1px solid #cbb77b50; border-radius:50%; box-shadow:0 0 0 3px #e9d09708; }
+    .inlay:before,.inlay:after { position:absolute; top:50%; transform:translateY(-50%); color:#ddc17f88; font-size:16px; }.inlay:before { content:'✦'; left:5%; }.inlay:after { content:'✦'; right:5%; }
+    .table-mark { position:absolute; left:50%; top:20%; transform:translateX(-50%); color:#e2d09c77; font-size:9px; font-weight:700; letter-spacing:.25em; white-space:nowrap; }
+    .emblem { position:absolute; inset:0; display:grid; place-items:center; pointer-events:none; }
+    .emblem span { position:relative; top:-3%; font:clamp(85px,12vw,175px)/1 Georgia,serif; color:#82a47a16; text-shadow:0 1px #a1c19a0a,0 -1px #002b1e33; animation:breathe 12s ease-in-out infinite; }
+    .emblem:after { content:''; position:absolute; inset:-30%; background:linear-gradient(115deg,transparent 44%,#f3e4ae08 50%,transparent 56%); animation:emblem-light 14s ease-in-out infinite; }
+    .dust { position:absolute; inset:80px 22% 15%; pointer-events:none; overflow:hidden; }
+    .dust i { position:absolute; left:var(--x); top:var(--y); width:var(--size,2px); height:var(--size,2px); border-radius:50%; background:#ead6a7; opacity:0; animation:dust-drift var(--duration,14s) ease-in-out var(--delay,0s) infinite; }
+    .glass { isolation:isolate; border:1px solid #e7d8ac45; border-radius:15px; background:linear-gradient(130deg,#c9d9bc1c,#15382bd1 38%,#071e18e8); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); box-shadow:inset 0 1px #f4edd02b,inset 1px 0 #f4edd00d,0 16px 34px #00140fa8; }
+    .glass:after { content:''; position:absolute; inset:0; border-radius:inherit; pointer-events:none; border-top:1px solid #f4e9c330; background:linear-gradient(120deg,transparent 15%,#f2e9c80b 35%,transparent 55%); opacity:.65; animation:glass-reveal 1.5s ease-out both; }
+    .seats { position:absolute; inset:0; pointer-events:none; z-index:2; }
+    .seat { position:absolute; left:calc(50% + var(--x) * var(--seat-radius-x,46%)); top:calc(50% + var(--y) * var(--seat-radius-y,48%)); transform:translate(-50%,-50%); width:116px; min-height:42px; padding:6px 8px; display:flex; align-items:center; gap:6px; border-radius:8px; }
+    .avatar { flex:none; width:24px; height:24px; border-radius:50%; display:grid; place-items:center; border:1px solid #e3c98877; color:#f6e8c9; background:linear-gradient(145deg,#436a52,#17392c); font:700 13px 'Cormorant Garamond',serif; }
+    .seat-info { min-width:0; flex:1; }.seat strong { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11px; }.seat small { display:block; color:#d1c49e; font-size:9px; margin-top:3px; white-space:nowrap; font-variant-numeric:tabular-nums; }.seat.self { border-color:#e1c486; }.seat.offline { border-style:dashed; }.seat.offline .avatar { background:#34382a; }.seat.pending { border-color:#a3c6a070; }.seat.empty { justify-content:center; width:94px; color:#c3cdb7; background:#102b218c; border-style:dashed; font-size:10px; }
+    .seat-role { position:absolute; top:-6px; right:6px; border:1px solid #e6cc8c70; border-radius:4px; padding:1px 4px; background:#193728; color:#ead9af; font-size:8px; }
+    .seat.active { border-color:#d9c184; }.seat.active .avatar { box-shadow:inset 0 0 0 2px #d9c184; }
+    .opponent-fan { position:absolute; left:50%; top:calc(100% + 4px); transform:translateX(-50%); display:flex; padding-left:10px; }
+    .opponent-fan.above { top:auto; bottom:calc(100% + 4px); }.opponent-fan img { width:22px; height:31px; object-fit:cover; border-radius:3px; margin-left:-10px; box-shadow:0 2px 6px #00150b88; transform:rotate(var(--r)); }
+    .sample-hand { position:relative; display:flex; justify-content:center; margin-top:45px; height:112px; }.sample-hand img { width:clamp(52px,6vw,79px); aspect-ratio:.7; align-self:start; border-radius:7px; box-shadow:0 8px 16px #0006; margin-left:-15px; transform:rotate(var(--r)) translateY(var(--y)); }.sample-hand img:first-child { margin-left:0; }
+    .hand-label { text-align:center; margin-top:7px; color:#d8c99f; font-size:10px; letter-spacing:.12em; text-transform:uppercase; }
+    .center { position:absolute; inset:23% 20%; z-index:1; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; gap:10px; }
+    .center h2 { margin:0; font:600 clamp(22px,3vw,34px) 'Cormorant Garamond',serif; }.center p { color:#e2ddc4; font-size:12px; margin:0; }.center .clock { font:600 40px/1 'Cormorant Garamond',serif; color:#f3dfae; font-variant-numeric:tabular-nums; }.center button { padding:9px 13px; }
+    .played { display:flex; gap:8px; }.played img { width:clamp(40px,5vw,65px); border-radius:5px; box-shadow:0 7px 15px #00160dbb; }.played img:first-child { transform:rotate(-9deg); }.played img:last-child { transform:rotate(8deg); }
+    .panel-backdrop { position:fixed; inset:0; z-index:4; background:#03120b45; }
+    .host-panel { position:fixed; z-index:5; top:92px; right:5%; width:min(390px,calc(100% - 32px)); max-height:calc(100dvh - 112px); overflow:auto; padding:22px; background:linear-gradient(140deg,#204535f5,#081f18f5); animation:arrive .3s ease-out both; }
+    [hidden] { display:none !important; }.panel-head { display:flex; justify-content:space-between; align-items:center; gap:10px; }.panel-head h2 { margin:0; font:600 29px 'Cormorant Garamond',serif; }.close { padding:4px 11px; font-size:22px; background:transparent; }.host-panel p { font-size:12px; color:#c8d4bf; line-height:1.6; }.host-panel h3 { font-size:13px; color:#edd9ab; margin:19px 0 10px; }
+    .control-buttons { display:flex; flex-wrap:wrap; gap:8px; }.status { padding:10px 12px; background:#081f17; border:1px solid #ddc68e33; border-radius:8px; color:#f0dfb7 !important; }
+    .roster-row { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid #eadab616; }.roster-row strong { font-size:12px; }.roster-row small { display:block; color:#c0cdb5; font-size:10px; margin-top:4px; }.roster-row button { padding:7px 10px; font-size:10px; }
+    .empty-note { color:#adbea6; font-size:11px; margin:10px 0; }.setup { border-top:1px solid var(--line); margin-top:18px; padding-top:15px; }.setup summary { cursor:pointer; font-size:12px; color:#e9d4a8; min-height:32px; }.setup-fields { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:10px 0; }.setup label { display:grid; gap:7px; font-size:11px; color:#c7d3bb; }.setup input,.setup select { width:100%; min-height:40px; padding:7px; border-radius:6px; border:1px solid #dac28a55; background:#102b20; color:#f1ddb5; }
+    .preview { position:relative; max-width:840px; margin:0 auto; padding:20px; text-align:center; }.preview p { color:#b9c7b0; font-size:11px; line-height:1.6; }.scenarios { display:flex; flex-wrap:wrap; justify-content:center; gap:8px; }.scenarios button { font-size:11px; }.scenarios button[aria-pressed="true"] { background:#d6bd85; color:#251c10; }
+    .notice { position:relative; margin:0 auto 20px; min-height:24px; text-align:center; color:#e9d4a8; font-size:12px; padding:0 20px; }
+    .score-popover { position:absolute; top:55px; right:0; width:205px; z-index:3; padding:20px; background:linear-gradient(140deg,#204535f5,#081f18f5); animation:arrive .3s ease-out both; }.score-popover p { font-size:12px; display:flex; justify-content:space-between; }.score-popover h2 { margin:0 0 15px; font:600 26px 'Cormorant Garamond',serif; }
+    @keyframes breathe { 0%,100% { opacity:.5; } 50% { opacity:1; } }
+    @keyframes emblem-light { 0%,100% { transform:translateX(-35%); opacity:0; } 40%,60% { opacity:1; } 75% { transform:translateX(35%); opacity:0; } }
+    @keyframes dust-drift { 0%,100% { opacity:0; transform:translate(0,20px); } 25% { opacity:.24; } 65% { opacity:.38; } 90% { opacity:0; transform:translate(25px,-65px); } }
+    @keyframes glass-reveal { from { opacity:0; transform:translateY(4px); } to { opacity:.65; transform:translateY(0); } }
+    @keyframes arrive { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+    @media(max-width:1200px) { header { flex-wrap:wrap; gap:14px; }.nav { justify-content:flex-end; flex:1; gap:12px; }.brand { font-size:23px; } }
+    @media(max-width:1000px) { .table-frame { grid-template-columns:1fr 1fr; }.table-spacer { display:none; }.table-wrap { grid-column:1/-1; grid-row:1; max-width:850px; margin:auto; }.nav { flex-basis:100%; justify-content:space-between; }.seat { width:108px; } }
+    @media(max-width:600px) { header { display:grid; grid-template-columns:1fr; padding:16px 5%; gap:14px; }.brand { font-size:22px; }.nav { width:100%; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px 8px; }.metric { font-size:11px; }.metric small { font-size:8px; letter-spacing:.08em; }.nav button { width:100%; padding:8px 6px; }.score-anchor { grid-column:1; grid-row:2; }.host-toggle { grid-column:2; grid-row:2; }#exit { grid-column:3; grid-row:2; }.start-slot { grid-column:1/-1; grid-row:3; width:100%; }.start-slot:has(button[hidden]) { display:none; }.intro { padding-top:30px; }.intro p { font-size:12px; }.table-frame { grid-template-columns:1fr; padding:15px 5% 30px; gap:10px; }.table-wrap { padding:60px 0 50px; }.table { padding:13px; }.felt { border-width:6px; }.seat { width:86px; min-height:36px; padding:5px; gap:4px; }.seat strong { font-size:10px; }.seat small { font-size:8px; }.avatar { width:20px; height:20px; font-size:12px; }.seat.empty { width:73px; font-size:9px; }.seat-role { font-size:7px; top:-5px; }.opponent-fan img { width:16px; height:23px; }.opponent-fan { padding-left:8px; }.opponent-fan img { margin-left:-8px; }.sample-hand { height:82px; margin-top:46px; }.sample-hand img { width:48px; }.center { inset:23% 22%; gap:4px; }.center h2 { font-size:21px; }.center p { font-size:10px; }.center .clock { font-size:25px; }.center button { font-size:10px; min-height:36px; padding:6px 10px; }.center .pre-help { display:none; }.host-panel { top:auto; bottom:12px; right:12px; width:calc(100% - 24px); max-height:80dvh; padding:18px; }.score-popover { right:auto; left:0; width:min(205px,85vw); }.emblem span { font-size:95px; }.table-mark { font-size:7px; }.dust { inset:150px 12% 30%; } }
+    @media(max-width:600px) { .seats { --seat-radius-x:39%; }.seat[data-seat="0"],.seat[data-seat="4"] { --seat-radius-y:62%; }.sample-hand { margin-top:62px; } }
+    @media(max-width:360px) {
+      .played img { width:36px; }.center p { font-size:9px; }
+      .seat[data-seat="2"] .opponent-fan,.seat[data-seat="6"] .opponent-fan { left:calc(100% + 3px); top:50%; bottom:auto; transform:translateY(-50%); padding-left:9px; }
+      .seat[data-seat="6"] .opponent-fan { left:auto; right:calc(100% + 3px); }
+      .seat[data-seat="2"] .opponent-fan img,.seat[data-seat="6"] .opponent-fan img { width:12px; height:17px; margin-left:-9px; }
+    }
+    @media(prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none !important; transition:none !important; } }
+    @media(prefers-reduced-transparency:reduce) { .glass { background:#102b22; backdrop-filter:none; -webkit-backdrop-filter:none; }.glass:after { display:none; } }
+  </style>
+</head>
+<body>
+  <main class="scene">
+    <div class="dust" aria-hidden="true"><i style="--x:12%;--y:42%;--duration:15s;--delay:-3s"></i><i style="--x:26%;--y:67%;--duration:19s;--delay:-11s;--size:1px"></i><i style="--x:40%;--y:31%;--duration:13s;--delay:-7s"></i><i style="--x:53%;--y:52%;--duration:17s;--delay:-2s;--size:1px"></i><i style="--x:67%;--y:38%;--duration:21s;--delay:-14s"></i><i style="--x:79%;--y:61%;--duration:16s;--delay:-9s;--size:1px"></i><i style="--x:33%;--y:78%;--duration:18s;--delay:-5s"></i><i style="--x:61%;--y:22%;--duration:14s;--delay:-12s;--size:1px"></i></div>
+    <header><div class="brand"><span>♠</span>JUDGEMENT</div><nav class="nav" aria-label="Table controls"><div class="metric"><small>Trump</small><strong id="nav-trump"><span class="heart">♥</span> Hearts</strong></div><div class="metric"><small>Round</small><strong id="nav-round">No. 1</strong></div><div class="metric"><small>Room code</small><strong>JK48</strong></div><div class="score-anchor"><button id="scores-toggle" aria-expanded="false" aria-controls="scores">Scores</button><aside id="scores" class="score-popover glass" hidden aria-label="Sample standings"></aside></div><div class="start-slot"><button id="start-bidding" class="primary" data-action="start-bid">Start bidding now</button></div><button class="host-toggle" id="host-toggle" aria-expanded="false" aria-controls="host-panel">Host <span class="badge" id="waiting-count">2</span></button><button id="exit">Exit ↗</button></nav></header>
+    <section class="intro"><h1>A seat at your table.</h1><p>Host concept. Eight seats, next-round admissions and live sample controls.</p></section>
+    <div class="table-frame"><div class="table-spacer" aria-hidden="true"></div><div class="table-wrap"><div class="table-area"><div class="table"><div class="felt"><div class="inlay"></div><div class="emblem" aria-hidden="true"><span id="emblem">♥</span></div><div class="table-mark">J U D G E M E N T</div></div><section class="center" id="center" aria-label="Game phase"></section></div><div class="seats" id="seats" aria-label="Eight table seats"></div></div><div class="sample-hand" aria-label="Example host hand"><img src="client/src/assets/cards/AS.svg" alt="Ace of spades" style="--r:-9deg;--y:8px"><img src="client/src/assets/cards/JH.svg" alt="Jack of hearts" style="--r:-3deg;--y:0px"><img src="client/src/assets/cards/8D.svg" alt="Eight of diamonds" style="--r:3deg;--y:0px"><img src="client/src/assets/cards/KC.svg" alt="King of clubs" style="--r:9deg;--y:8px"></div><div class="hand-label">Your example hand</div></div><div class="table-spacer" aria-hidden="true"></div></div>
+    <div class="notice" id="notice" role="status" aria-live="polite">Open Host to explore the controls. All changes are local to this sample.</div>
+    <section class="preview" aria-label="Sample scenarios"><div class="scenarios"><button data-scenario="pre" aria-pressed="true">Before bidding</button><button data-scenario="active" aria-pressed="false">Active round</button><button data-scenario="summary" aria-pressed="false">Round complete</button><button data-scenario="paused" aria-pressed="false">Management paused</button><button data-scenario="full" aria-pressed="false">Table full</button></div><p>Preview tools reset the sample. No server, multiplayer connection, or main-menu changes.</p></section>
+    <div class="panel-backdrop" id="backdrop" hidden></div>
+    <section class="host-panel glass" id="host-panel" role="dialog" aria-modal="true" aria-labelledby="host-title" hidden>
+      <div class="panel-head"><h2 id="host-title">Host controls</h2><button class="close" id="close-host" aria-label="Close host controls">×</button></div>
+      <p>Keep the table moving. New arrivals join at the next deal.</p>
+      <p class="status" id="panel-status"></p><div class="control-buttons" id="phase-actions"></div>
+      <h3 id="roster-title">At the table</h3><div id="roster"></div>
+      <h3>Waiting to join</h3><div id="waiting"></div>
+      <h3>Joining next round</h3><div id="approved"></div>
+      <details class="setup" id="setup"><summary>Next-round setup</summary><div class="setup-fields"><label>Cards per player<input id="cards" type="number" min="1" max="8" value="4"></label><label>Trump suit<select id="suit"><option value="HEARTS">♥ Hearts</option><option value="SPADES">♠ Spades</option><option value="DIAMONDS">♦ Diamonds</option><option value="CLUBS">♣ Clubs</option></select></label></div><p id="capacity"></p></details>
+    </section>
+  </main>
+  <script>
+    const $ = selector => document.querySelector(selector);
+    const suitInfo = { HEARTS:['♥','Hearts'], SPADES:['♠','Spades'], DIAMONDS:['♦','Diamonds'], CLUBS:['♣','Clubs'] };
+    const names = ['You','Maya','Dev','Imani','Rafael','Noor','Luca','Mei-Ling Chen'];
+    let players, waiting, phase, paused, remaining, deadline, round, trump, kickId = null;
+    let scenario = 'pre';
+    const safe = text => String(text).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+    function message(text) { $('#notice').textContent = text; }
+    function manageable() { return phase === 'summary'; }
+    function resetSample(next) {
+      scenario = next; closeHost(false); kickId = null;
+      players = names.slice(0,next === 'full' ? 8 : 7).map((name,seat) => ({ id:seat,name,seat,online:seat !== 4,pending:seat === 6 && next !== 'full',score:[30,20,20,10,10,0,0,0][seat],bid:[2,1,0,1,0,0,0,0][seat],won:seat === 0 ? 1 : 0 }));
+      waiting = [{id:20,name:'Arjun'}, {id:21,name:'Sofia'}];
+      phase = next === 'pre' ? 'pre' : next === 'active' ? 'active' : 'summary';
+      paused = next === 'paused' || next === 'full';
+      remaining = phase === 'pre' ? 15 : 5;
+      deadline = Date.now() + remaining * 1000; round = 1; trump = 'HEARTS';
+      $('#cards').value = 4; $('#suit').value = trump;
+      $('#scores').hidden = true; $('#scores-toggle').setAttribute('aria-expanded','false');
+      document.querySelectorAll('[data-scenario]').forEach(button => button.setAttribute('aria-pressed',String(button.dataset.scenario === next)));
+      message(next === 'full' ? 'Eight seats occupied. Remove a player between rounds before admitting someone.' : 'Sample reset. Open Host to explore this phase.');
+      render();
+    }
+    function phaseText() {
+      if (phase === 'pre') return paused ? 'Pre-bidding wait paused' : `Bidding begins in ${remaining}s`;
+      if (phase === 'bidding') return paused ? 'Bidding paused' : `Bidding is open / ${remaining}s remaining`;
+      if (phase === 'active') return paused ? 'Game paused' : 'Round in progress';
+      return paused ? `Next round paused at ${remaining}s` : `Next round in ${remaining}s`;
+    }
+    function render() {
+      $('#nav-round').textContent = `No. ${round}`;
+      $('#nav-trump').textContent = `${suitInfo[trump][0]} ${suitInfo[trump][1]}`;
+      $('#emblem').textContent = suitInfo[trump][0];
+      $('#waiting-count').textContent = waiting.length;
+      $('#waiting-count').hidden = waiting.length === 0;
+      $('#start-bidding').hidden = phase !== 'pre';
+      $('#start-bidding').disabled = paused;
+      $('#seats').innerHTML = Array.from({length:8},(_,seat) => {
+        // Equivalent to seatDisplaySlot(seat, 0, 8), then seatUnitVector(slot, 8).
+        // The local seat is bottom-center and occupied seats retain clockwise order.
+        const slot = (seat + 4) % 8;
+        const angle = -Math.PI / 2 + slot * Math.PI / 4;
+        const vars = `--x:${Math.cos(angle)};--y:${Math.sin(angle)}`;
+        const player = players.find(entry => entry.seat === seat);
+        if (!player) return `<div class="seat glass empty" data-seat="${seat}" style="${vars}">Seat ${seat+1} available</div>`;
+        const acting = seat === 1 && !paused && ['bidding','active'].includes(phase);
+        const detail = player.pending ? 'Next round' : !player.online ? 'Offline' : phase === 'active' ? `Bid ${player.bid} · ${player.won} won` : acting ? 'Bidding now' : seat === 0 ? 'Host' : `Seat ${seat+1}`;
+        const role = seat === 0 ? '<span class="seat-role" aria-label="Host">H</span>' : seat === 1 ? '<span class="seat-role" aria-label="Dealer">D</span>' : '';
+        const fan = seat !== 0 && !player.pending && ['pre','bidding','active'].includes(phase) ? `<div class="opponent-fan ${Math.sin(angle) < -.15 ? 'above' : ''}" aria-hidden="true">${[-12,0,12].map(r=>`<img src="client/src/assets/cards/1B.webp" alt="" style="--r:${r}deg">`).join('')}</div>` : '';
+        return `<div class="seat glass ${seat === 0 ? 'self' : ''} ${!player.online ? 'offline' : ''} ${player.pending ? 'pending' : ''} ${acting ? 'active' : ''}" data-seat="${seat}" style="${vars}" aria-label="${safe(player.name)}, seat ${seat+1}, ${safe(detail)}${seat === 1 ? ', dealer' : ''}"><span class="avatar" aria-hidden="true">${safe(player.name.slice(0,1))}</span><div class="seat-info"><strong title="${safe(player.name)}">${safe(player.name)}</strong><small>${safe(detail)}</small></div>${role}${fan}</div>`;
+      }).join('');
+      let center = '';
+      if (phase === 'pre') center = `<h2>Cards are dealt.</h2><p class="pre-help">Take a look at your hand.</p><div class="clock">${paused ? 'Paused' : remaining+'s'}</div>`;
+      else if (phase === 'summary') center = `<h2>Round complete.</h2><p>${paused ? 'The table is on hold.' : 'Next round starts in'}</p><div class="clock">${paused ? 'Paused' : remaining+'s'}</div><button class="primary" data-action="pause">${paused ? 'Resume countdown' : 'Pause next round'}</button>`;
+      else if (phase === 'bidding') center = `<h2>Make your call.</h2><p>${paused ? 'Bidding is paused.' : 'Maya is bidding.'}</p><div class="clock">${paused ? 'Paused' : remaining+'s'}</div>`;
+      else center = `<div class="played"><img src="client/src/assets/cards/9C.svg" alt="Nine of clubs"><img src="client/src/assets/cards/QH.svg" alt="Queen of hearts"></div><p>${paused ? 'Game paused' : 'Maya to play'}</p>`;
+      $('#center').innerHTML = center;
+      $('#panel-status').textContent = phaseText();
+      $('#phase-actions').innerHTML = `<button data-action="pause">${paused ? phase === 'summary' ? 'Resume countdown' : 'Resume game' : phase === 'summary' ? 'Pause next round' : 'Pause game'}</button>${phase === 'summary' ? '<button class="primary" data-action="next">Start next round now</button>' : ''}`;
+      $('#roster-title').textContent = `At the table (${players.filter(p => !p.pending).length}/8)`;
+      $('#roster').innerHTML = players.filter(p => !p.pending).map(p => `<div class="roster-row"><div><strong>${safe(p.name)}${p.id === 0 ? ' (you)' : ''}</strong><small>Seat ${p.seat+1} / ${p.online ? 'Connected' : 'Offline'}</small></div>${p.id === 0 ? '<small>Host</small>' : `<button class="danger" data-kick="${p.id}" ${!manageable() ? 'disabled title="Available after the round ends"' : ''}>${kickId === p.id ? 'Confirm removal' : 'Remove'}</button>`}</div>`).join('');
+      const freeSeat = players.length < 8;
+      $('#waiting').innerHTML = waiting.map(p => `<div class="roster-row"><div><strong>${safe(p.name)}</strong><small>${freeSeat ? 'Spectating / waiting for approval' : 'Waiting / table full'}</small></div><button data-admit="${p.id}" ${!freeSeat ? 'disabled' : ''}>Admit next round</button></div>`).join('') || '<p class="empty-note">Nobody is waiting.</p>';
+      $('#approved').innerHTML = players.filter(p => p.pending).map(p => `<div class="roster-row"><div><strong>${safe(p.name)}</strong><small>Seat ${p.seat+1} reserved / joins at the next deal</small></div></div>`).join('') || '<p class="empty-note">No seats reserved for next round.</p>';
+      const max = Math.floor(52 / players.length);
+      $('#cards').max = max;
+      $('#capacity').textContent = `${players.length} seats occupied or reserved. Up to ${max} cards per player.`;
+      $('#setup').hidden = phase !== 'summary';
+      $('#scores').innerHTML = '<h2>Standings</h2>' + players.filter(p => !p.pending).map(p=>`<p><span>${safe(p.name)}</span><strong>${p.score}</strong></p>`).join('');
+    }
+    function pauseToggle() {
+      if (paused) { paused = false; deadline = Date.now() + remaining * 1000; }
+      else { remaining = Math.max(0,Math.ceil((deadline - Date.now())/1000)); paused = true; }
+      message(paused ? 'Paused. Closing host controls will not resume the game.' : 'Resumed.'); render();
+    }
+    function startBidding() {
+      if (phase !== 'pre' || paused) return;
+      phase = 'bidding'; remaining = 20; deadline = Date.now() + 20000;
+      message('Waiting skipped. The 20-second sample bidding timer has started.'); render();
+      // The navbar action disappears; keep keyboard focus on the resulting phase.
+      $('#center h2').setAttribute('tabindex','-1'); $('#center h2').focus({preventScroll:true});
+    }
+    function nextRound() {
+      if (phase !== 'summary') return;
+      const max = Math.floor(52 / players.length);
+      const requested = Number($('#cards').value);
+      if (!Number.isInteger(requested) || requested < 1 || requested > max) { message(`Choose between 1 and ${max} cards.`); $('#cards').focus(); return; }
+      trump = $('#suit').value; round += 1;
+      players.forEach(p => { p.pending = false; });
+      phase = 'pre'; paused = false; remaining = 15; deadline = Date.now() + 15000;
+      closeHost(false); message(`Round ${round} started with ${requested} cards per player. Approved players are now at the table.`); render();
+    }
+    function closeHost(restore = true) {
+      $('#host-panel').hidden = true; $('#backdrop').hidden = true;
+      $('#host-toggle').setAttribute('aria-expanded','false');
+      kickId = null;
+      if (restore) $('#host-toggle').focus();
+    }
+    function openHost() {
+      if (phase === 'summary' && !paused) { remaining = Math.max(0,Math.ceil((deadline-Date.now())/1000)); paused = true; message('Next-round countdown paused for player management.'); }
+      $('#scores').hidden = true; $('#scores-toggle').setAttribute('aria-expanded','false');
+      render(); $('#host-panel').hidden = false; $('#backdrop').hidden = false;
+      $('#host-toggle').setAttribute('aria-expanded','true'); $('#close-host').focus();
+    }
+    $('#host-toggle').addEventListener('click',()=>$('#host-panel').hidden ? openHost() : closeHost());
+    $('#close-host').addEventListener('click',()=>closeHost()); $('#backdrop').addEventListener('click',()=>closeHost());
+    $('#scores-toggle').addEventListener('click',()=>{ $('#scores').hidden = !$('#scores').hidden; $('#scores-toggle').setAttribute('aria-expanded',String(!$('#scores').hidden)); });
+    $('#exit').addEventListener('click',()=>message('Exit is a preview only. Your main menu has not been changed.'));
+    document.addEventListener('click',event=>{
+      const button = event.target.closest('button');
+      if (!event.target.closest('#scores') && !event.target.closest('#scores-toggle')) { $('#scores').hidden = true; $('#scores-toggle').setAttribute('aria-expanded','false'); }
+      if (!button || button.disabled) return;
+      if (button.dataset.scenario) { resetSample(button.dataset.scenario); return; }
+      if (button.dataset.action === 'pause') pauseToggle();
+      if (button.dataset.action === 'start-bid') startBidding();
+      if (button.dataset.action === 'next') nextRound();
+      if (button.dataset.admit) {
+        const person = waiting.find(p => p.id === Number(button.dataset.admit));
+        if (!person || players.length >= 8) return;
+        const seat = Array.from({length:8},(_,n)=>n).find(n=>!players.some(p=>p.seat === n));
+        players.push({...person,seat,online:true,pending:true,score:0}); waiting = waiting.filter(p=>p.id !== person.id);
+        message(`${person.name} approved for seat ${seat+1}. They will join at the next deal.`); render();
+        $('#host-title').setAttribute('tabindex','-1'); $('#host-title').focus();
+      }
+      if (button.dataset.kick && manageable()) {
+        const id = Number(button.dataset.kick); if (id === 0) return;
+        if (kickId !== id) { kickId = id; render(); document.querySelector(`[data-kick="${id}"]`).focus(); return; }
+        const person = players.find(p=>p.id === id); players = players.filter(p=>p.id !== id); kickId = null;
+        message(`${person.name} removed between rounds. Their seat is available.`); render(); $('#close-host').focus();
+      }
+    });
+    document.addEventListener('keydown',event=>{
+      if (event.key === 'Escape') { if (!$('#host-panel').hidden) closeHost(); else { $('#scores').hidden = true; $('#scores-toggle').setAttribute('aria-expanded','false'); } }
+      if (event.key !== 'Tab' || $('#host-panel').hidden) return;
+      const focusable = [...$('#host-panel').querySelectorAll('button:not(:disabled),input,select,summary')].filter(el=>el.getClientRects().length);
+      const first = focusable[0], last = focusable[focusable.length-1];
+      if (event.shiftKey && (document.activeElement === first || !focusable.includes(document.activeElement))) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    });
+    // Absolute deadlines drive sample waits and the newly opened bidding timer.
+    const ticker = setInterval(()=>{
+      if (paused || !['summary','pre','bidding'].includes(phase)) return;
+      const next = Math.max(0,Math.ceil((deadline-Date.now())/1000));
+      if (next === remaining) return;
+      remaining = next;
+      if (remaining === 0) {
+        if (phase === 'summary') { nextRound(); return; }
+        if (phase === 'pre') { startBidding(); return; }
+        phase = 'active'; message('Sample bidding complete. Card play is open.'); render(); return;
+      }
+      // Update countdown text without replacing focused controls or roster rows.
+      $('#panel-status').textContent = phaseText();
+      const clock = $('#center .clock'); if (clock) clock.textContent = remaining+'s';
+    },200);
+    window.addEventListener('pagehide',()=>clearInterval(ticker),{once:true});
+    resetSample('pre');
+  </script>
+</body>
+</html>

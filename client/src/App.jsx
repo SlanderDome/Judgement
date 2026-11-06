@@ -5,7 +5,7 @@ import { useGameState } from "./hooks/useGameState.js";
 import { MotionConfig } from "framer-motion";
 
 export default function App() {
-  const { roomState, clientPlayerId, isConnected, errorMessage, actions } = useGameState();
+  const { roomState, clientPlayerId, isConnected, connectionStatus, errorMessage, actions } = useGameState();
 
   return (
     <MotionConfig reducedMotion="user">
@@ -27,15 +27,19 @@ export default function App() {
             roomState={roomState}
             clientPlayerId={clientPlayerId}
             isConnected={isConnected}
+            connectionStatus={connectionStatus}
             errorMessage={errorMessage}
             onStartGame={actions.startGame}
             onStartBidding={actions.startBidding}
             onTogglePause={actions.togglePause}
+            onSetPaused={actions.setPaused}
             onSubmitBid={actions.submitBid}
             onPlayCard={actions.playCard}
             onTakeSeat={actions.takeSeat}
             onKickPlayer={actions.kickPlayer}
+            onAdmitPlayer={actions.admitPlayer}
             onNextRound={actions.nextRound}
+            onConfigureNextRound={actions.configureNextRound}
             onRematch={actions.rematch}
             onLeaveRoom={actions.leaveRoom}
           />

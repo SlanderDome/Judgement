@@ -1,179 +1,138 @@
-import { useState } from "react";
-import { seatedPlayers } from "../lib/seats.js";
+import { useEffect, useRef, useState } from "react";
+import { RoomCountdown } from "./RoomCountdown.jsx";
 
 const SUITS = [
-  { key: "SPADES", label: "Spades", pip: "♠", red: false },
-  { key: "DIAMONDS", label: "Diamonds", pip: "♦", red: true },
-  { key: "CLUBS", label: "Clubs", pip: "♣", red: false },
-  { key: "HEARTS", label: "Hearts", pip: "♥", red: true }
+  ["SPADES", "♠ Spades"], ["DIAMONDS", "♦ Diamonds"], ["CLUBS", "♣ Clubs"], ["HEARTS", "♥ Hearts"]
 ];
 
-export function AdminRoundControl({ roomState, onStartGame, onStartBidding, onTogglePause, onKickPlayer, onNextRound, onClose }) {
-  const isLobby = roomState.status === "LOBBY";
-  const isSummary = roomState.status === "ROUND_SUMMARY";
-  const canConfigure = isLobby || isSummary;
-  const isPreBidding = roomState.status === "PRE_BIDDING";
-  const canPause = !isLobby && !isSummary && roomState.status !== "GAME_OVER";
+export function AdminRoundControl({ roomState, isConnected, busy = false, externalError = "", onStartGame, onSetPaused, onKickPlayer, onAdmitPlayer, onNextRound, onConfigureNextRound, onRematch, onClose }) {
+  const { status, players, gameConfig } = roomState;
+  const lobby = status === "LOBBY";
+  const summary = status === "ROUND_SUMMARY";
+  const gameOver = status === "GAME_OVER";
+  const paused = roomState.paused === true;
+  const context = { expectedRound: gameConfig.roundNumber, expectedStatus: status };
+  const occupied = players.filter(player => Number.isInteger(player.seatIndex));
+  const seated = occupied.filter(player => !player.pendingNextRound);
+  const approved = occupied.filter(player => player.pendingNextRound);
+  const waiting = players.filter(player => !Number.isInteger(player.seatIndex));
+  const maxCards = roomState.nextRoundSetup?.maxCards ?? Math.max(1, Math.floor(52 / Math.max(1, occupied.length)));
+  const nextCount = roomState.nextRoundSetup?.playerCount ?? occupied.length;
+  const defaultCards = lobby ? 1 : roomState.nextRoundSetup?.cardsInRound ?? 1;
+  const defaultSuit = lobby ? "SPADES" : roomState.nextRoundSetup?.trumpSuit ?? "SPADES";
+  const [cards, setCards] = useState(defaultCards);
+  const [suit, setSuit] = useState(defaultSuit);
+  const [dirty, setDirty] = useState(false);
+  const [pending, setPending] = useState(null);
+  const [confirmId, setConfirmId] = useState(null);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const inFlight = useRef(false);
+  const mounted = useRef(false);
+  const closeRef = useRef(null);
+  const confirmCancelRef = useRef(null);
+  const errorRef = useRef(null);
 
-  const ring = seatedPlayers(roomState);
-  const players = roomState.players ?? [];
-  const seatedPlayersCount = ring.length || 1;
-  const maxAllowedCards = Math.max(1, Math.floor(52 / seatedPlayersCount));
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  useEffect(() => {
+    setCards(defaultCards); setSuit(defaultSuit); setDirty(false);
+    setConfirmId(null); setError(""); setNotice("");
+  }, [roomState.roomId, gameConfig.roundNumber, status]);
+  useEffect(() => { if (confirmId) confirmCancelRef.current?.focus({ preventScroll: true }); }, [confirmId]);
+  useEffect(() => { if (error) errorRef.current?.focus({ preventScroll: true }); }, [error]);
+  useEffect(() => { if (confirmId && !players.some(player => player.playerId === confirmId)) setConfirmId(null); }, [players, confirmId]);
 
-  const defaultCards = isLobby ? 1 : Math.min(roomState.gameConfig.cardsInRound + 1, maxAllowedCards);
-  const [cardsInRound, setCardsInRound] = useState(defaultCards);
-  const [selectedSuit, setSelectedSuit] = useState(roomState.gameConfig.trumpSuit ?? "SPADES");
-  const [pendingKickId, setPendingKickId] = useState(null);
-  const [playersOpen, setPlayersOpen] = useState(false);
+  const locked = !!pending || busy || !isConnected;
+  const canRemove = lobby || summary;
+  const canAdmit = !lobby && !gameOver;
+  const full = occupied.length >= (roomState.seatCount ?? 8);
+  const invalidCards = !Number.isInteger(Number(cards)) || Number(cards) < 1 || Number(cards) > maxCards;
+  const finishMatch = summary && !dirty && roomState.nextRoundSetup?.cardsInRound === null;
+  const setupError = dirty ? (invalidCards ? `Choose a whole number from 1 to ${maxCards}.` : null) : roomState.nextRoundSetup?.configurationError;
+  const canStart = nextCount >= 2 && !invalidCards && !setupError;
 
-  function handleDecrement() {
-    setCardsInRound((prev) => Math.max(1, prev - 1));
-  }
-
-  function handleIncrement() {
-    setCardsInRound((prev) => Math.min(maxAllowedCards, prev + 1));
-  }
-
-  function handlePrimary() {
-    if (isLobby) {
-      onStartGame({ cardsInRound, trumpSuit: selectedSuit });
-    } else {
-      onNextRound({ cardsInRound, trumpSuit: selectedSuit });
+  async function run(key, action, successMessage = "", close = false) {
+    if (inFlight.current || locked) return;
+    inFlight.current = true; setPending(key); setError(""); setNotice("");
+    try {
+      const result = await action();
+      if (!mounted.current) return;
+      if (!result?.success) { setError(result?.message ?? "The server did not confirm this change."); return; }
+      setConfirmId(null); setNotice(successMessage);
+      if (key === "save" || key === "resume") setDirty(false);
+      if (close) onClose?.();
+      else if (key.startsWith("remove:") || key.startsWith("admit:")) closeRef.current?.focus({ preventScroll: true });
+    } catch {
+      if (mounted.current) setError("Unable to confirm this change. Check your connection and try again.");
+    } finally {
+      inFlight.current = false;
+      if (mounted.current) setPending(null);
     }
-    onClose?.();
   }
 
-  function handleEndGame() {
-    onNextRound({ action: "end_game" });
-    onClose?.();
-  }
-
-  function handleKick(playerId) {
-    if (pendingKickId === playerId) {
-      onKickPlayer?.(playerId);
-      setPendingKickId(null);
-      return;
+  const roundOptions = () => ({ ...context, cardsInRound: Number(cards), trumpSuit: suit });
+  async function resume() {
+    if (summary && dirty) {
+      const result = await onConfigureNextRound(roundOptions());
+      if (!result.success) return result;
     }
-
-    setPendingKickId(playerId);
+    return onSetPaused(false, context);
   }
 
-  const title = isLobby ? "Start the first round" : "Configure next round";
-  const primaryLabel = isLobby ? "Start game" : `Start round ${roomState.gameConfig.roundNumber + 1}`;
-
-  return (
-    <div className="overlay-card admin-card">
-      <div className="overlay-head">
-        <div>
-          <p className="eyebrow">Host controls</p>
-          <h2>{canPause ? "Game controls" : title}</h2>
-        </div>
-        {onClose && (
-          <button type="button" className="overlay-close btn-ghost" onClick={onClose} aria-label="Close">
-            ×
-          </button>
-        )}
+  function renderPlayer(player, group) {
+    const host = player.playerId === roomState.adminPlayerId;
+    const detail = group === "approved" ? `Seat ${player.seatIndex + 1} reserved / ${player.isOnline ? "Connected" : "Offline"}. Joins at the next deal.`
+      : `${Number.isInteger(player.seatIndex) ? `Seat ${player.seatIndex + 1} / ` : ""}${player.isOnline ? "Connected" : "Offline"}${host ? " / Host" : ""}`;
+    return <div className="host-player" key={player.playerId} data-player-id={player.playerId}>
+      <div className="host-player__row">
+        <div className="host-player__identity"><strong title={player.nickname}>{player.nickname}{host ? " (host)" : ""}</strong><small>{detail}</small></div>
+        {group === "waiting" && <button type="button" className="btn-ghost" disabled={locked || !canAdmit || full || !player.isOnline} onClick={() => run(`admit:${player.playerId}`, () => onAdmitPlayer(player.playerId, context), `${player.nickname} is approved for the next round.`)} aria-label={`Admit ${player.nickname} next round`}>{pending === `admit:${player.playerId}` ? "Admitting…" : "Admit next round"}</button>}
+        {!host && <button type="button" className="btn-danger" disabled={locked || !canRemove} title={canRemove ? `Remove ${player.nickname}` : "Players can only be removed between rounds"} onClick={() => setConfirmId(player.playerId)} aria-label={`Remove ${player.nickname}`}>Remove</button>}
       </div>
+      {group === "waiting" && !player.isOnline && <p className="host-hint">This player must reconnect before admission.</p>}
+      {confirmId === player.playerId && <div className="host-confirm" role="group" aria-label={`Confirm removal of ${player.nickname}`}>
+        <p>Remove <strong>{player.nickname}</strong> from the room? Their seat will become available.</p>
+        <div><button type="button" className="btn-ghost" ref={confirmCancelRef} disabled={locked} onClick={() => setConfirmId(null)}>Cancel</button><button type="button" className="btn-danger" disabled={locked || !canRemove} onClick={() => run(`remove:${player.playerId}`, () => onKickPlayer(player.playerId, context), `${player.nickname} was removed.`)}>{pending === `remove:${player.playerId}` ? "Removing…" : `Confirm remove ${player.nickname}`}</button></div>
+      </div>}
+    </div>;
+  }
 
-      {canConfigure && (
-        <>
-          <div className="control-section admin-section admin-section--round">
-            <div className="admin-section__heading">
-              <span className="control-label">Round setup</span>
-              <span className="admin-section__hint">Up to {maxAllowedCards} cards</span>
-            </div>
-            <span className="control-label control-label--subtle">Cards for next round</span>
-            <div className="stepper">
-              <button type="button" className="btn-ghost" onClick={handleDecrement} disabled={cardsInRound <= 1}>
-                −
-              </button>
-              <span className="stepper-value">{cardsInRound}</span>
-              <button type="button" className="btn-ghost" onClick={handleIncrement} disabled={cardsInRound >= maxAllowedCards}>
-                +
-              </button>
-            </div>
-          </div>
-
-          <div className="control-section admin-section admin-section--suit">
-            <span className="control-label">Trump suit</span>
-            <div className="suit-row">
-              {SUITS.map((suit) => (
-                <button
-                  key={suit.key}
-                  type="button"
-                  className={`suit-chip ${suit.red ? "red" : "black"} ${selectedSuit === suit.key ? "is-selected" : ""}`}
-                  onClick={() => setSelectedSuit(suit.key)}
-                >
-                  {suit.pip} {suit.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
-
-      {canConfigure && (
-      <div className="control-section admin-section admin-players-section">
-        <button type="button" className="admin-players-toggle" onClick={() => setPlayersOpen((open) => !open)} aria-expanded={playersOpen}>
-          <span className="control-label">Players in room</span>
-          <span>{players.length} {players.length === 1 ? "player" : "players"} {playersOpen ? "−" : "+"}</span>
-        </button>
-        <div className={`order-list admin-players-list ${playersOpen ? "is-open" : ""}`}>
-          {players.map((player) => (
-            <div key={player.playerId} className="order-row">
-              <span className="order-pos">{player.seatIndex == null ? "-" : player.seatIndex + 1}</span>
-              <span className="order-name">
-                {player.nickname}
-                {player.playerId === roomState.adminPlayerId
-                  ? " · host"
-                  : player.seatIndex == null
-                    ? " · spectator"
-                    : ""}
-              </span>
-              {(isLobby || isSummary) && player.playerId !== roomState.adminPlayerId && (
-                <button
-                  type="button"
-                  className={`kick-button ${pendingKickId === player.playerId ? "is-confirming" : ""}`}
-                  onClick={() => handleKick(player.playerId)}
-                  aria-label={pendingKickId === player.playerId ? `Confirm kick ${player.nickname}` : `Kick ${player.nickname}`}
-                >
-                  {pendingKickId === player.playerId ? "Confirm" : "Kick"}
-                </button>
-              )}
-            </div>
-          ))}
-          {players.length === 0 && <p className="control-hint">Nobody is in the room yet.</p>}
-        </div>
-      </div>
-      )}
-
-      <div className="control-actions admin-actions">
-        {canConfigure && (
-          <button type="button" className="btn-primary" onClick={handlePrimary}>
-            {primaryLabel}
-          </button>
-        )}
-        {isPreBidding && (
-          <button type="button" className="btn-ghost" onClick={onStartBidding}>
-            Start bidding now
-          </button>
-        )}
-        {canPause && (
-          <button
-            type="button"
-            className="btn-ghost"
-            onClick={onTogglePause}
-            aria-pressed={roomState.paused === true}
-          >
-            {roomState.paused ? "Resume game" : "Pause game"}
-          </button>
-        )}
-        {isSummary && (
-          <button type="button" className="btn-danger" onClick={handleEndGame}>
-            End game
-          </button>
-        )}
-      </div>
+  return <div className="overlay-card admin-card host-management" aria-busy={!!pending || busy}>
+    <div className="host-management__head"><h2 id="room-host-title">Host controls</h2><button type="button" className="btn-ghost" ref={closeRef} onClick={onClose} aria-label="Close host controls">×</button></div>
+    <p className="host-description">Keep the table moving. New arrivals join at the next deal.</p>
+    <div className="host-phase">
+      <strong role="status">{lobby ? "Waiting to start" : gameOver ? "Match complete" : summary ? paused ? "Next round paused" : "Next round starts in" : paused ? "Game paused" : status === "PRE_BIDDING" ? "Bidding begins in" : status === "BIDDING" ? "Bidding in progress" : status === "TRICK_COMPLETE" ? "Trick complete" : "Round in progress"}</strong>
+      {!lobby && !gameOver && <RoomCountdown timer={roomState.timer} paused={paused} />}
     </div>
-  );
+    {(externalError || error) && <p className="host-error" role="alert" ref={errorRef} tabIndex={-1}>{error || externalError}</p>}
+    {!isConnected && <p className="host-error" role="status">Reconnecting. Host actions are unavailable until the table is synchronized.</p>}
+    {notice && <p className="host-notice" role="status">{notice}</p>}
+    {busy && <p className="host-notice" role="status">Confirming the pause with the server…</p>}
+    <div className="host-phase-actions">
+      {!lobby && !gameOver && <button type="button" className="btn-ghost" disabled={locked || (paused && summary && (!canStart || !!setupError))} aria-pressed={paused} onClick={() => run(paused ? "resume" : "pause", paused ? resume : () => onSetPaused(true, context), paused ? "Countdown resumed." : "Paused. Closing this panel will not resume the game.")}>{pending === "pause" || pending === "resume" ? "Confirming…" : summary ? paused ? "Resume countdown" : "Pause next round" : paused ? "Resume game" : "Pause game"}</button>}
+      {summary && <button type="button" className="btn-primary" disabled={locked || (!finishMatch && !canStart)} onClick={() => run("next", () => onNextRound(finishMatch ? { ...context, action: "end_game" } : dirty ? roundOptions() : context), "", true)}>{pending === "next" ? "Starting…" : finishMatch ? "Finish match now" : "Start next round now"}</button>}
+      {gameOver && <button type="button" className="btn-primary" disabled={locked} onClick={() => run("rematch", onRematch, "", true)}>{pending === "rematch" ? "Resetting…" : "Rematch"}</button>}
+    </div>
+    {summary && <p className="host-hint">{paused ? "The remaining time is frozen. Close the panel without resuming to keep managing later." : "The countdown is running. Pause it before editing the next round."}</p>}
+    {!canRemove && !gameOver && <p className="host-hint">Player removal unlocks after the round ends. Admissions reserve a seat for the next deal.</p>}
+    {summary && nextCount < 2 && <p className="host-error">Admit another player before starting or resuming. At least two players are required.</p>}
+    <section className="host-roster" aria-labelledby="host-table-heading"><h3 id="host-table-heading">At the table <span>{seated.length}/{roomState.seatCount ?? 8}</span></h3>{seated.map(player => renderPlayer(player, "seated"))}{!seated.length && <p className="host-hint">No players are seated yet.</p>}</section>
+    <section className="host-roster" aria-labelledby="host-waiting-heading"><h3 id="host-waiting-heading">Waiting to join <span>{waiting.length}</span></h3>
+      {lobby && <p className="host-hint">Players can choose their own seats before the match starts.</p>}
+      {gameOver && <p className="host-hint">Start a rematch to open the seats again.</p>}
+      {full && waiting.length > 0 && <p className="host-hint">All eight seats are occupied or reserved. Free a seat between rounds first.</p>}
+      {waiting.map(player => renderPlayer(player, "waiting"))}{!waiting.length && <p className="host-hint">Nobody is waiting.</p>}
+    </section>
+    <section className="host-roster" aria-labelledby="host-approved-heading"><h3 id="host-approved-heading">Joining next round <span>{approved.length}</span></h3>{approved.map(player => renderPlayer(player, "approved"))}{!approved.length && <p className="host-hint">No seats are reserved for the next round.</p>}</section>
+    {(lobby || summary) && <details className="host-setup" open={lobby ? true : undefined}>
+      <summary>{lobby ? "First-round setup" : "Next-round setup"}</summary>
+      {summary && !paused && <p className="host-hint">Pause the countdown to edit this setup.</p>}
+      <div className="host-setup__fields"><label>Cards per player<input type="number" min="1" max={maxCards} value={cards} disabled={locked || (summary && !paused)} aria-describedby="host-card-limit" aria-invalid={dirty && invalidCards} onChange={event => { setCards(event.target.value); setDirty(true); }} /></label><label>Trump suit<select aria-label="Trump suit" value={suit} disabled={locked || (summary && !paused)} onChange={event => { setSuit(event.target.value); setDirty(true); }}>{SUITS.map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label></div>
+      <p className="host-hint" id="host-card-limit">{nextCount} players for the next deal. Up to {maxCards} cards each.</p>
+      {setupError && <p className="host-error" role="alert">{setupError}</p>}
+      {summary && <button type="button" className="btn-ghost" disabled={locked || !paused || !dirty || invalidCards} onClick={() => run("save", () => onConfigureNextRound(roundOptions()), "Next-round setup saved. It will be used when the countdown finishes.")}>{pending === "save" ? "Saving…" : "Save next-round setup"}</button>}
+      {lobby && <button type="button" className="btn-primary" disabled={locked || !canStart || invalidCards} onClick={() => run("start", () => onStartGame(roundOptions()), "", true)}>{pending === "start" ? "Starting…" : "Start game"}</button>}
+    </details>}
+    {summary && <button type="button" className="btn-danger host-end-match" disabled={locked} onClick={() => run("end", () => onNextRound({ ...context, action: "end_game" }), "", true)}>End game</button>}
+  </div>;
 }

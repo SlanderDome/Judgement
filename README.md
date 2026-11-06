@@ -160,7 +160,7 @@ Terminal 1:
 npm run dev:server
 ```
 
-This starts Node with file watching. The Socket.io and HTTP server listens on port `3001`.
+This starts Node with file watching. The Socket.io and HTTP server listens on development port `3107`.
 
 Terminal 2:
 
@@ -177,7 +177,7 @@ http://localhost:5173
 The development client connects to:
 
 ```text
-http://127.0.0.1:3001
+http://127.0.0.1:3107
 ```
 
 If the client and server run on different hosts or ports, configure `VITE_SOCKET_URL` as described below.
@@ -201,12 +201,12 @@ cp client/.env.example client/.env.local
 Set the backend URL:
 
 ```env
-VITE_SOCKET_URL=http://127.0.0.1:3001
+VITE_SOCKET_URL=http://127.0.0.1:3107
 ```
 
 Behavior when `VITE_SOCKET_URL` is unset:
 
-- Development: the client uses `http://127.0.0.1:3001`.
+- Development: the client uses `http://127.0.0.1:3107`.
 - Production: the client uses the current page origin, allowing the built client and server to share one host.
 
 ### Server configuration
@@ -215,13 +215,13 @@ The server supports:
 
 | Variable | Default | Purpose |
 |---|---:|---|
-| `PORT` | `3001` | HTTP and Socket.io listening port |
+| `PORT` | `3107` with `npm run dev:server`, otherwise `3001` | HTTP and Socket.io listening port |
 | `CORS_ORIGIN` | `*` | Comma-separated browser origin allowlist |
 
 Example:
 
 ```env
-PORT=3001
+PORT=3107
 CORS_ORIGIN=http://localhost:5173,https://example.com
 ```
 

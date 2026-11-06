@@ -42,7 +42,8 @@ npm run dev:client
 
 ## Ports
 
-- Server: `http://localhost:3001`
+- Development server: `http://localhost:3107`
+- Production/single-process server: `http://localhost:3001`
 - Client: `http://localhost:5173`
 
 ## Useful commands

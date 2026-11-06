@@ -1,0 +1,444 @@
+/* In-room implementation of design-concept.html. Main-menu selectors and fonts
+   remain in styles.css. Layers: materials 0, cards 2, seats 5, center 6,
+   dragging hand 20, navbar 30, dialogs 50. */
+html:has(.room-concept) { scrollbar-gutter:stable; }
+.app-shell--game {
+  width:100%; max-width:none; height:auto; min-height:100dvh; margin:0;
+  padding:0; display:block; overflow:visible;
+}
+.app-shell--game::before { display:none; }
+.game-layout.room-concept {
+  --font-body:"DM Sans",sans-serif;
+  --font-display:"Cormorant Garamond",serif;
+  --ivory:#f7efdc; --gold:#e5c98a; --gold-light:#eedbb2;
+  --glass-border:#e7d8ac45;
+  --glass-bg:linear-gradient(130deg,#c9d9bc1c,#15382bd1 38%,#071e18e8);
+  --card-w-hand:clamp(68px,6vw,100px);
+  --card-w-table:clamp(48px,7vw,96px);
+  position:relative; isolation:isolate; display:flex; flex-direction:column;
+  min-height:100dvh; height:auto; max-height:none; padding:0; gap:0;
+  color:var(--ivory); font-family:var(--font-body); perspective:none;
+  background:radial-gradient(ellipse at 50% 23%,#32694c 0%,#133e2c 26%,#09241a 58%,#061510 100%);
+}
+.room-concept::before {
+  content:""; position:absolute; inset:0; z-index:-1; pointer-events:none;
+  background:radial-gradient(ellipse at 50% -10%,#fff0ba38,transparent 52%),radial-gradient(ellipse at 50% 55%,transparent 35%,#03110bbb 100%);
+}
+.room-concept button:focus-visible { outline:2px solid var(--ivory); outline-offset:4px; }
+.room-concept .btn-primary { background:#dfc38a; color:#241b0e; border-color:#f0dcaa; box-shadow:inset 0 1px #fff2; }
+.room-concept .btn-primary:hover:not(:disabled) { background:#efdaa7; }
+.room-concept .overlay-card,.room-concept .bidding-panel {
+  font-family:var(--font-body); background:var(--glass-bg); border-color:var(--glass-border);
+  box-shadow:inset 0 1px #f4edd02b,inset 1px 0 #f4edd00d,0 16px 34px #00140fa8;
+  backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
+}
+.room-concept .overlay { position:fixed; z-index:50; }
+.room-concept .overlay--admin { align-items:flex-start; justify-content:flex-end; padding:92px 5% 20px; background:#03120b66; }
+.room-concept .admin-card { width:min(390px,100%); max-height:calc(100dvh - 112px); overflow:auto; border-radius:15px; background:linear-gradient(140deg,#204535f5,#081f18f5); }
+
+/* Compact, shared desktop/mobile navbar; dropdowns do not participate in layout. */
+.room-concept .room-navbar {
+  position:relative; z-index:30; display:flex; align-items:center; justify-content:space-between;
+  width:100%; max-width:1500px; margin:0 auto; padding:12px 5%; gap:16px;
+  min-height:64px; border-bottom:1px solid #e3d3a51c;
+}
+.room-navbar__brand { font-family:var(--font-wordmark); font-size:27px; letter-spacing:.09em; color:#f6e4bb; white-space:nowrap; }
+.room-navbar__brand > span { color:var(--gold); font-family:serif; }
+.room-navbar__items { display:flex; align-items:center; justify-content:flex-end; gap:10px; }
+.room-concept .room-nav-button {
+  display:inline-flex; align-items:center; justify-content:center; gap:5px; min-height:32px;
+  padding:6px 10px; border:1px solid #e4cd942b; border-radius:6px;
+  background:#102e2466; color:#ead8b0; font-size:11px; font-weight:500; white-space:nowrap; box-shadow:none;
+}
+.room-concept .room-nav-button:hover:not(:disabled) { background:#214838; transform:none; }
+.room-concept .room-nav-button:active:not(:disabled) { transform:scale(.98); }
+.room-concept .room-nav-button--primary,.room-concept .room-host-toggle[aria-expanded="true"] { color:#241b0e; background:#dfc38a; border-color:#f0dcaa; font-weight:700; }
+.room-concept .room-nav-button--primary:hover:not(:disabled) { background:#efdaa7; }
+.room-concept .room-start-bidding { min-height:36px; padding-inline:12px; }
+.room-metric { display:grid; gap:4px; font-size:12px; white-space:nowrap; }
+.room-metric > span { color:#b9c6b4; text-transform:uppercase; font-size:9px; letter-spacing:.14em; }
+.room-metric > strong { color:#eedbb2; font-weight:600; font-variant-numeric:tabular-nums; }
+.room-concept .room-metric .trump-tag { display:flex; align-items:center; gap:5px; padding:0; background:none; border:0; box-shadow:none; }
+.room-concept .room-metric .trump-label { display:none; }
+.room-concept .room-metric .trump-pip { font-size:15px; }
+.room-concept .trump-name { font-size:12px; color:#eedbb2; }
+.room-concept .trump-tag--red .trump-pip { color:#e19891; }
+.room-concept .room-navbar .room-code-btn { display:grid; justify-items:start; align-content:center; gap:4px; margin:0; padding:3px 5px; min-height:44px; border:0; background:transparent; border-radius:6px; box-shadow:none; }
+.room-concept .room-navbar .room-code-btn:hover { background:#e5c98a12; }
+.room-concept .room-navbar .gh-room-label { display:block; min-width:72px; font-size:9px; color:#b9c6b4; letter-spacing:.1em; text-transform:uppercase; }
+.room-concept .room-navbar .is-copied .gh-room-label { color:#f3dfac; }
+.room-concept .room-navbar .room-code { font:600 12px var(--font-body); color:#eedbb2; letter-spacing:.08em; }
+.room-concept .room-navbar .room-code-tag { display:none; }
+.room-waiting-count { padding:2px 5px; border-radius:4px; background:#e5c98a; color:#241b0e; font-size:10px; font-weight:700; }
+.room-dropdown { position:relative; }
+.room-concept .room-popover {
+  position:absolute; top:calc(100% + 10px); right:0; width:225px; max-height:60dvh; overflow:auto;
+  padding:20px; border:1px solid var(--glass-border); border-radius:15px;
+  background:linear-gradient(140deg,#204535f5,#081f18f5); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
+  box-shadow:inset 0 1px #f4edd02b,0 16px 34px #00140fa8; animation:room-panel-enter .25s ease-out both;
+}
+.room-popover h2 { margin:0 0 15px; font:600 26px/1 var(--font-display); color:var(--ivory); }
+.room-popover p { color:#c4cfbd; font-size:12px; line-height:1.6; }
+.room-popover > .sound-toggle,.room-popover > .connection-dot-badge { margin-bottom:12px; }
+.room-score-row { display:flex; gap:12px; justify-content:space-between; font-size:12px; padding:9px 0; }
+.room-score-row > span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.room-score-row strong { color:var(--gold-light); font-variant-numeric:tabular-nums; }
+.room-score-row.is-you { color:var(--gold-light); }
+.room-navbar__notice { position:absolute; right:5%; top:100%; font-size:11px; background:#102b22; padding:8px; border-radius:6px; }
+.room-statusbar { width:90%; max-width:1350px; margin:0 auto; padding:8px 0 0; color:#c7d1bf; font-size:12px; line-height:1.4; text-align:center; }
+.room-statusbar p { margin:0; }
+.room-statusbar .room-connection-notice { margin-top:4px; color:#f1d29a; }
+
+.room-concept .room-intro { position:relative; text-align:center; padding:38px 20px 0; }
+.room-intro h1 { margin:10px 0 6px; font:600 clamp(36px,4vw,56px)/1 var(--font-display); letter-spacing:.01em; }
+.room-intro p { color:#c7d1bf; font-size:13px; margin:0; }
+.room-intro .room-connection-notice { margin-top:8px; color:#f1d29a; }
+.room-concept .room-table-frame { position:relative; width:100%; max-width:1600px; margin:0 auto; padding:28px 5% 55px; display:grid; grid-template-columns:160px minmax(0,1fr) 160px; gap:14px; align-items:start; }
+.room-table-stage { min-width:0; position:relative; padding:65px 0 60px; }
+.room-concept .table-wrap { display:block; width:100%; height:auto; min-height:0; flex:none; padding:0; margin:0; }
+.room-concept .poker-table {
+  --seat-scale:1; --seat-radius-x:46%; --seat-radius-y:48%;
+  position:relative; width:100%; height:auto; max-width:none; max-height:none; aspect-ratio:1.85;
+  border:0; border-radius:50%; padding:clamp(18px,2.4vw,34px); transform:none;
+  background:repeating-linear-gradient(105deg,#d6b18106 0 2px,#150e080c 3px 7px,transparent 8px 15px),linear-gradient(145deg,#84603c 0%,#4c321f 17%,#302015 36%,#624329 58%,#291c13 80%,#795735 100%);
+  box-shadow:0 38px 38px #000a,0 14px 0 #21140d,0 19px 0 #100e0a,inset 0 3px 3px #f9dda17a,inset 0 -7px 14px #0009;
+}
+.room-concept .poker-table::before { content:""; position:absolute; inset:8px; border:1px solid #d6bb8270; border-radius:50%; box-shadow:inset 0 1px #fff2,0 0 0 1px #382518; pointer-events:none; }
+.room-concept .poker-table__felt {
+  inset:clamp(18px,2.4vw,34px); border-radius:50%; overflow:hidden;
+  border:clamp(6px,.85vw,12px) solid #143727;
+  background:radial-gradient(ellipse at 50% 24%,#308b65,#126147 42%,#08432f 77%,#052b20);
+  box-shadow:0 0 0 1px #c8a96ba6,0 0 0 4px #291c13,inset 0 7px 20px #001b11b8,inset 0 0 45px #00180dbb;
+}
+.poker-table__felt::before { content:""; position:absolute; inset:0; background:repeating-linear-gradient(35deg,#ffffff08 0 1px,transparent 1px 4px),radial-gradient(ellipse at 50% 10%,#f5e6ae20,transparent 55%); }
+.poker-table__inlay { position:absolute; inset:8%; border:1px solid #cbb77b50; border-radius:50%; box-shadow:0 0 0 3px #e9d09708; }
+.poker-table__inlay::before,.poker-table__inlay::after { position:absolute; top:50%; transform:translateY(-50%); color:#ddc17f88; font-size:16px; }
+.poker-table__inlay::before { content:"✦"; left:5%; }.poker-table__inlay::after { content:"✦"; right:5%; }
+.poker-table__emblem { position:absolute; inset:0; display:grid; place-items:center; pointer-events:none; }
+.poker-table__emblem span { position:relative; top:-3%; font:clamp(85px,12vw,175px)/1 Georgia,serif; color:#82a47a16; text-shadow:0 1px #a1c19a0a,0 -1px #002b1e33; animation:room-emblem-breathe 12s ease-in-out infinite; }
+.poker-table__emblem::after { content:""; position:absolute; inset:-30%; background:linear-gradient(115deg,transparent 44%,#f3e4ae08 50%,transparent 56%); animation:room-emblem-light 14s ease-in-out infinite; }
+.poker-table__wordmark { position:absolute; left:50%; top:20%; transform:translateX(-50%); color:#e2d09c77; font-size:9px; font-weight:700; letter-spacing:.25em; white-space:nowrap; }
+.room-dust { position:absolute; inset:80px 22% 15%; overflow:hidden; pointer-events:none; }
+.room-dust i { position:absolute; left:var(--x); top:var(--y); width:var(--size); height:var(--size); border-radius:50%; background:#ead6a7; opacity:0; animation:room-dust-drift var(--duration) ease-in-out var(--delay) infinite; }
+
+/* Eight compact seats; positioning continues to use seats.js's rotated ring. */
+.room-concept .table-seat { transform:translate(-50%,-50%); width:116px; }
+.room-concept .poker-table .seat {
+  min-width:0; max-width:none; width:100%; min-height:42px; padding:6px 8px; gap:6px;
+  display:flex; flex-direction:row; align-items:center; text-align:left; border:1px solid var(--glass-border); border-radius:8px;
+  background:var(--glass-bg); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+  box-shadow:inset 0 1px #f4edd02b,inset 1px 0 #f4edd00d,0 12px 24px #00140f88;
+}
+.room-concept .seat-avatar-wrap { width:24px; height:24px; flex:0 0 24px; }
+.room-concept .seat-avatar { width:24px; height:24px; border:1px solid #e3c98877; background:linear-gradient(145deg,#436a52,#17392c); color:#f6e8c9; font:700 13px var(--font-display); box-shadow:none; }
+.room-concept .seat-info { min-width:0; flex:1; align-items:stretch; gap:3px; }
+.room-concept .seat-name { display:block; max-width:100%; font:600 11px/1.2 var(--font-body); letter-spacing:0; }
+.room-concept .seat-status,.room-concept .seat-bid-badge { color:#d1c49e; font:400 9px/1.2 var(--font-body); text-transform:none; letter-spacing:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-variant-numeric:tabular-nums; text-shadow:none; }
+.room-concept .seat--offline { opacity:.85; border-style:dashed !important; }
+.room-concept .seat--self,.room-concept .poker-table .seat.seat--active { border-color:#e1c486; background:var(--glass-bg); box-shadow:inset 0 1px #fff2,0 12px 24px #00140f88; }
+.room-concept .seat-host { position:absolute; right:5px; top:-6px; padding:1px 4px; border:1px solid #d7bb7d77; border-radius:4px; background:#193728; color:#ead9af; font-size:8px; line-height:1.1; }
+.room-concept .seat-dealer { top:-7px; right:-4px; width:12px; height:12px; font-size:8px; box-shadow:none; }
+.room-concept .seat-timer { width:30px; height:30px; inset:-3px; }
+.room-concept .seat-timer-text { font-size:9px; top:-12px; padding:0 3px; }
+.room-concept .seat-sit,.room-concept .seat-empty { width:94px; height:38px; min-height:38px; margin:auto; flex-direction:row; gap:5px; border-radius:8px; border:1px dashed #d8c69955; background:#102b21c9; font-size:10px; color:#c3cdb7; }
+.room-concept .seat-sit__label { font-size:10px; letter-spacing:.04em; padding:0; }.room-concept .seat-sit__num { font-size:10px; }
+.room-concept .seat-sit:hover { transform:none; background:#254d38; color:#f7efdc; }
+.room-concept .seat-fan { --deck-card-w:22px; top:calc(100% + 4px); left:50%; width:0; height:31px; transform:none; }
+.room-concept .seat-fan--above { top:auto; bottom:calc(100% + 4px); }
+.room-concept .seat-fan__card { width:22px; height:31px; border-radius:3px; transform:translateX(-50%) translateX(calc((var(--i) - (var(--n) - 1) / 2) * 10px)) rotate(calc((var(--i) - (var(--n) - 1) / 2) * 12deg)); box-shadow:0 2px 6px #00150b88; }
+.room-concept .table-deck,.room-concept .deal-fly-card { --deck-card-w:clamp(24px,3vw,45px); }
+
+/* Real card/hand components retain drag and selection behavior. */
+.room-concept .poker-table__center { inset:23% 20%; }
+.room-concept .poker-table__center .table-stage { width:100%; height:100%; max-height:none; aspect-ratio:auto; }
+.room-concept .poker-table__center .table-felt { width:100%; height:100%; min-height:0; overflow:visible; border:0; border-radius:0; background:transparent; box-shadow:none; }
+.room-concept .table-inner { height:100%; min-height:0; padding:0; background:none; }
+.room-concept .played-card-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; align-items:center; justify-items:stretch; width:100%; max-width:480px; height:auto; }
+.room-concept .played-card-grid:has(.played-card-slot:nth-child(5)) { --card-w-table:clamp(40px,5vw,72px); }
+.room-concept .played-card-grid[data-count="1"] { grid-template-columns:minmax(0,1fr); max-width:120px; }
+.room-concept .played-card-grid[data-count="2"] { grid-template-columns:repeat(2,minmax(0,1fr)); max-width:240px; }
+.room-concept .played-card-grid[data-count="3"] { grid-template-columns:repeat(3,minmax(0,1fr)); max-width:320px; }
+.room-concept .played-card-slot { width:100%; gap:4px; }
+.room-concept .table-card { width:min(var(--card-w-table),100%); max-width:100%; }
+.room-concept .played-by { font-size:10px; max-width:80px; }
+.room-concept .last-trick,.room-concept .trick-reveal { max-width:100%; font-size:11px; background:#0c2b20d9; }
+.room-concept .table-inner > .last-trick,.room-concept .table-inner > .trick-reveal { bottom:-24px; }
+.room-concept .self-area { --card-w-hand:clamp(68px,6vw,100px); width:100%; height:auto; max-height:none; margin:50px auto 0; padding:0; background:none; border:0; box-shadow:none; overflow:visible; }
+.room-concept .fan-hand { display:flex; flex-wrap:nowrap; min-height:140px; max-height:none; padding:25px 12px 16px; gap:0; justify-content:center; overflow-x:auto; overflow-y:hidden; scrollbar-width:thin; }
+.room-concept .fan-hand--overflowing { justify-content:flex-start; }
+.room-concept .fan-hand--overflowing .fan-card-wrap { margin-left:var(--fan-overlap,0); }
+.room-concept .self-area.is-dragging { z-index:20; }
+.room-concept .self-area.is-dragging .fan-hand { overflow:visible; }
+.room-concept .spectator-bar { margin:50px auto 0; font-size:12px; border-radius:8px; }
+.room-concept .table-lobby-note { display:block; font-size:13px; line-height:1.5; color:#d1dcc5; }
+.room-concept .table-lobby-note strong { font:600 34px/1.1 var(--font-display); color:#f3dfae; }
+.room-concept .table-lobby-note__title { font:600 28px/1.1 var(--font-display); color:var(--ivory); }
+.room-concept .table-center-bidding .bidding-panel { max-height:100%; border-radius:15px; padding:14px; }
+.room-concept .poker-table__center .bidding-panel--waiting { display:block; }
+
+@keyframes room-panel-enter { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+@keyframes room-emblem-breathe { 0%,100% { opacity:.5; } 50% { opacity:1; } }
+@keyframes room-emblem-light { 0%,100% { transform:translateX(-35%); opacity:0; } 40%,60% { opacity:1; } 75% { transform:translateX(35%); opacity:0; } }
+@keyframes room-dust-drift { 0%,100% { opacity:0; transform:translate(0,20px); } 25% { opacity:.24; } 65% { opacity:.38; } 90% { opacity:0; transform:translate(25px,-65px); } }
+
+@media(max-width:1200px) {
+  .room-concept .room-navbar { flex-wrap:wrap; gap:14px; }
+   .room-navbar__items { gap:8px; flex:1; }.room-navbar__brand { font-size:23px; }
+}
+@media(max-width:1000px) {
+  .room-concept .room-table-frame { grid-template-columns:1fr 1fr; }
+  .room-table-spacer { display:none; }.room-table-stage { grid-column:1/-1; grid-row:1; width:100%; max-width:850px; margin:auto; }
+  .room-navbar__items { flex-basis:100%; justify-content:space-between; }
+  .room-concept .table-seat { width:108px; }
+}
+@media(max-width:600px) {
+  .room-concept .room-navbar { display:grid; grid-template-columns:1fr; padding:10px 5%; gap:8px; }
+  .room-navbar__brand { font-size:22px; }
+  .room-navbar__items { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); width:100%; gap:4px 6px; }
+  .room-metric { font-size:11px; }.room-metric > span { font-size:8px; letter-spacing:.08em; }
+  .room-concept .trump-name { font-size:11px; }
+  .room-concept .room-nav-button { width:100%; min-height:44px; padding:6px; background:transparent; border-color:transparent; }
+  .room-concept .room-nav-button--primary { background:#dfc38a; border-color:#f0dcaa; }
+  .room-dropdown--utility { grid-column:4; grid-row:1; }
+  .room-dropdown--scores { grid-column:1; grid-row:2; }.room-host-toggle { grid-column:2; grid-row:2; }
+  .room-exit { grid-column:3; grid-row:2; }.room-start-bidding { grid-column:1/-1; grid-row:3; }
+  .room-dropdown--scores .room-popover { left:0; right:auto; width:min(225px,85vw); }
+  .room-concept .room-intro { padding-top:30px; }.room-intro p { font-size:12px; }
+  .room-concept .room-table-frame { grid-template-columns:1fr; padding:15px 5% 30px; gap:10px; }
+  .room-table-stage { padding:60px 0 50px; }
+  .room-concept .poker-table { --seat-radius-x:39%; --seat-radius-y:54%; padding:13px; }
+  .room-concept .poker-table__felt { inset:13px; border-width:6px; }
+  .room-concept .table-seat { width:86px; }
+  .room-concept .table-seat[data-pole="true"] { --seat-radius-y:62%; }
+  .room-concept .poker-table .seat { min-height:36px; padding:5px; gap:4px; }
+  .room-concept .seat-avatar-wrap { width:20px; height:20px; flex-basis:20px; }
+  .room-concept .seat-avatar { width:20px; height:20px; font-size:12px; }
+  .room-concept .seat-name { font-size:10px; }.room-concept .seat-status,.room-concept .seat-bid-badge { font-size:8px; }
+  .room-concept .seat-host { font-size:7px; }
+  .room-concept .seat-timer { width:26px; height:26px; }
+  .room-concept .seat-sit,.room-concept .seat-empty { width:73px; height:36px; min-height:36px; font-size:9px; }
+  .room-concept .seat-fan { height:23px; }.room-concept .seat-fan__card { width:16px; height:23px; transform:translateX(-50%) translateX(calc((var(--i) - (var(--n) - 1) / 2) * 8px)) rotate(calc((var(--i) - (var(--n) - 1) / 2) * 12deg)); }
+  .room-concept .poker-table__center { inset:23% 22%; }
+  .room-concept .played-card-grid { width:100%; gap:4px; }
+  .room-concept .played-by { font-size:8px; max-width:40px; }
+  .room-concept .played-card-grid:has(.played-card-slot:nth-child(5)) { --card-w-table:44px; }
+  .room-concept .played-card-grid:has(.played-card-slot:nth-child(5)) .played-by { display:none; }
+  .room-concept .self-area { margin-top:62px; }
+  .room-concept .fan-hand { min-height:128px; padding:24px 8px 12px; }
+  .room-concept .table-lobby-note { font-size:10px; }.room-concept .table-lobby-note__title { font-size:21px; }.room-concept .table-lobby-note strong { font-size:25px; }
+  .room-concept .table-deck,.room-concept .deal-fly-card { --deck-card-w:22px; }
+  .room-concept .table-center-bidding .bidding-panel { padding:8px; }
+  .poker-table__wordmark { font-size:7px; }.poker-table__emblem span { font-size:95px; }
+  .room-dust { inset:150px 12% 30%; }
+  .room-concept .overlay--admin { align-items:flex-end; padding:12px; }
+  .room-concept .admin-card { max-height:80dvh; width:100%; }
+}
+@media(max-width:360px) {
+  .room-concept .table-seat[data-side] .seat-fan { top:50%; bottom:auto; left:calc(100% + 12px); height:17px; }
+  .room-concept .table-seat[data-side="right"] .seat-fan { left:auto; right:calc(100% + 12px); }
+  .room-concept .table-seat[data-side] .seat-fan__card { width:12px; height:17px; transform:translateX(-50%) translateX(calc((var(--i) - (var(--n) - 1) / 2) * 3px)) rotate(calc((var(--i) - (var(--n) - 1) / 2) * 8deg)); }
+}
+@media(prefers-reduced-motion:reduce) {
+  .room-concept *,.room-concept *::before,.room-concept *::after { animation:none !important; transition:none !important; }
+}
+@media(prefers-reduced-transparency:reduce) {
+  .room-concept .poker-table .seat,.room-concept .room-popover,.room-concept .overlay-card,.room-concept .bidding-panel { background:#102b22; backdrop-filter:none; -webkit-backdrop-filter:none; }
+}
+
+/* A4-A7: the host panel is one scroll surface below the still-accessible Host
+   toggle. Everything behind it is inert; closing never resumes a paused clock. */
+.room-concept .overlay--admin {
+  inset:var(--room-navbar-height,76px) 0 0; padding:16px 5%;
+  align-items:flex-start; justify-content:flex-end;
+}
+.room-concept .host-management {
+  width:min(390px,100%); max-height:calc(100dvh - var(--room-navbar-height,76px) - 32px);
+  overflow:auto; overscroll-behavior:contain; touch-action:pan-y;
+  padding:22px; border-radius:15px;
+}
+.host-management__head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.room-concept .host-management__head h2 { margin:0; font:600 29px/1.1 var(--font-display); }
+.host-management__head button { flex:none; min-width:44px; font-size:22px; padding:5px 10px; }
+.host-description { color:#c8d4bf; font-size:12px; line-height:1.6; margin:14px 0; }
+.host-phase { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px; border:1px solid #ddc68e33; border-radius:8px; background:#081f17; color:#f0dfb7; font-size:12px; }
+.room-countdown { color:#eed5a0; font:700 20px/1.1 var(--font-body); font-variant-numeric:tabular-nums; white-space:nowrap; }
+.host-phase-actions { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+.host-phase-actions button { flex:1 1 auto; min-height:44px; font-size:12px; padding:10px 12px; }
+.host-hint { color:#c1cdb7; font-size:11px; line-height:1.6; margin:9px 0; }
+.host-error { color:#ffc5b8; font-size:12px; line-height:1.6; border-left:2px solid #dcaa86; padding:8px 10px; margin:10px 0; background:#492b213d; }
+.host-notice { color:#dddfbd; font-size:12px; line-height:1.6; padding:9px 10px; background:#e1cb8d0d; border-radius:6px; }
+.room-concept .host-roster h3 { display:flex; justify-content:space-between; gap:10px; font:600 13px/1.4 var(--font-body); color:#edd9ab; margin:22px 0 8px; }
+.host-roster h3 span { color:#c0cdb5; font-size:11px; font-weight:400; }
+.host-player { padding:10px 0; border-bottom:1px solid #eadab616; }
+.host-player__row { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+.host-player__identity { flex:1 1 100px; min-width:0; }
+.host-player__identity strong { display:block; overflow:hidden; text-overflow:ellipsis; font-size:12px; white-space:nowrap; }
+.host-player__identity small { display:block; color:#c0cdb5; font-size:10px; line-height:1.5; margin-top:4px; }
+.host-player__row button { min-height:44px; padding:8px 10px; font-size:10px; flex:none; }
+.host-confirm { background:#4532264d; padding:10px; border:1px solid #d6ac7f44; border-radius:8px; margin-top:10px; }
+.host-confirm p { font-size:12px; line-height:1.6; margin:0 0 10px; }
+.host-confirm > div { display:flex; flex-wrap:wrap; gap:8px; }
+.host-confirm button { min-height:44px; font-size:11px; max-width:100%; overflow-wrap:anywhere; }
+.host-setup { margin-top:22px; padding-top:16px; border-top:1px solid var(--glass-border); }
+.host-setup summary { cursor:pointer; color:#e9d4a8; font-size:12px; min-height:32px; }
+.host-setup summary:focus-visible { outline:2px solid var(--ivory); outline-offset:4px; }
+.host-setup__fields { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px; margin:12px 0; }
+.host-setup__fields label { display:grid; align-content:start; gap:7px; font-size:11px; color:#c7d3bb; min-width:0; }
+.host-setup__fields input,.host-setup__fields select { width:100%; min-width:0; min-height:44px; padding:8px; color:#f1ddb5; background:#102b20; border:1px solid #dac28a55; border-radius:6px; font:inherit; }
+.host-setup__fields select:focus-visible { outline:2px solid var(--ivory); outline-offset:3px; }
+.host-setup > button { width:100%; font-size:12px; }
+.host-end-match { margin-top:20px; min-height:44px; font-size:12px; }
+
+/* Nonmodal results preserve access to the navbar and the host's pause action. */
+.room-round-summary { position:relative; width:min(760px,90%); margin:22px auto 0; }
+.room-concept .room-round-summary > .overlay-card { width:100%; max-width:none; padding:20px; }
+.room-round-summary .overlay-head { margin-bottom:10px; }
+.room-round-summary .overlay-head h2 { font-size:28px; }
+.room-round-summary .score-list { grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; margin-top:10px; }
+.room-round-summary .score-row { padding:8px; gap:8px; font-size:12px; border-radius:8px; }
+.room-round-summary .score-row .mini-avatar { width:24px; height:24px; font-size:10px; }
+.room-round-summary .score-row .score-value { font-size:18px; }
+.room-round-summary .score-row .score-line { font-size:10px; }
+.room-round-summary .overlay-actions { margin-top:15px; gap:8px; }
+.room-round-summary .overlay-actions button { min-height:44px; font-size:12px; }
+.room-summary-timer { display:flex; align-items:center; gap:10px; font-size:12px; }
+.room-round-summary .host-error { flex-basis:100%; }
+@media(max-width:600px) {
+  .room-concept .overlay--admin { padding:12px; align-items:flex-end; }
+  .room-concept .host-management { width:100%; max-height:min(80dvh,calc(100dvh - var(--room-navbar-height,182px) - 24px)); padding:18px; }
+  .host-player__identity { flex-basis:100%; }
+  .host-player__row button { flex:1 1 auto; }
+  .room-round-summary { width:90%; }
+  .room-concept .room-round-summary > .overlay-card { padding:14px; }
+  .room-round-summary .score-row { grid-template-columns:minmax(0,1fr) auto; gap:5px; }
+  .room-round-summary .score-row .mini-avatar { display:none; }
+  .room-round-summary .score-row .score-line { grid-column:1/-1; }
+  .room-round-summary .overlay-actions > button { flex:1 1 auto; }
+  .room-summary-timer { flex-basis:100%; justify-content:space-between; }
+}
+
+/* A8: center-table bidding. Fixed-size chips scroll instead of compressing into
+   a grid. The panel stays inside the clear space between the eight seats. */
+.room-sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; border:0; }
+.room-concept.game-layout--bidding .poker-table__center { inset:0; pointer-events:none; }
+.room-concept .table-center-bidding { pointer-events:none; }
+.room-concept .poker-table__center .table-center-bidding .room-bidding {
+  pointer-events:auto; position:relative; width:min(350px,44%); max-width:none;
+  max-height:calc(96% - 48px); overflow-y:auto; overflow-x:hidden; padding:17px 20px;
+  border:1px solid #dbc48c70; border-radius:15px;
+  background:linear-gradient(140deg,#2c4a37f2,#0c251df5);
+  box-shadow:inset 0 1px #f6eac13b,0 18px 35px #00150dbb;
+  scrollbar-width:thin; scrollbar-color:#c2a66c #0c251d; animation:none;
+}
+.room-bid-head { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.room-concept .room-bid-head h3 { min-width:0; margin:0; font:600 clamp(22px,2.2vw,30px)/1.05 var(--font-display); text-align:left; }
+.room-bid-clock { flex:none; color:#e7ce96; font:700 19px/1.1 var(--font-body); font-variant-numeric:tabular-nums; }
+.room-bid-clock.is-urgent { color:#ffc2a1; }
+.room-bid-intro { font-size:11px; line-height:1.5; color:#d0d9c5; margin:8px 0 10px; text-align:left; }
+.room-bid-intro strong { color:#f2dfb6; white-space:nowrap; }
+.room-bid-scroll {
+  display:flex; align-items:center; gap:8px; min-width:0; max-width:100%; margin:0;
+  padding:7px 5px 9px; border:0; overflow-x:auto; overflow-y:hidden;
+  overscroll-behavior-x:contain; scroll-snap-type:x proximity; scroll-padding-inline:5px;
+  scrollbar-width:thin; scrollbar-color:#c2a66c #0c251d;
+}
+.room-bid-choice { position:relative; display:grid; place-items:center; flex:0 0 48px; min-height:48px; cursor:pointer; scroll-snap-align:start; }
+.room-bid-choice input { position:absolute; opacity:0; width:1px; height:1px; min-height:0; padding:0; }
+.room-bid-choice > span { position:relative; isolation:isolate; display:grid; place-items:center; width:44px; height:44px; border-radius:50%; background:repeating-conic-gradient(#d6bc7c 0deg 8deg,#1c3d2b 8deg 45deg); border:1px solid #deca9480; box-shadow:0 3px 0 #07180e; color:#f5e8c9; font-size:17px; font-weight:700; transition:transform .2s cubic-bezier(.16,1,.3,1); }
+.room-bid-choice > span::before { content:""; position:absolute; inset:4px; z-index:-1; background:#153828; border:1px solid #b79b6055; border-radius:50%; }
+.room-bid-choice input:checked + span { transform:translateY(-3px) rotate(-8deg); background:#e7ce97; color:#201b11; box-shadow:0 4px 0 #8c713b; }
+.room-bid-choice input:checked + span::before { background:#e7ce97; border-color:#907338; }
+.room-bid-choice input:focus-visible + span { outline:2px solid var(--ivory); outline-offset:3px; }
+.room-bid-choice:has(input:disabled) { cursor:not-allowed; }
+.room-bid-choice input:disabled + span { opacity:.6; box-shadow:none; }
+.room-bid-choice.is-forbidden > span { text-decoration:line-through; background:#243a2c; color:#b4bea9; border-style:dashed; }
+.room-bid-choice.is-forbidden > span::before { background:#243a2c; }
+.room-concept .room-bid-confirm { display:block; width:100%; min-height:44px; margin-top:10px; padding:10px; border-radius:7px; font-size:12px; white-space:nowrap; }
+.room-bid-rule { color:#d0c6a5; font-size:10px; line-height:1.5; text-align:left; margin:8px 0 0; }
+.room-bid-error { padding:7px 8px; margin:8px 0 0; background:#492b2155; border-left:2px solid #dcaa86; color:#ffc5b8; text-align:left; font-size:11px; line-height:1.5; }
+.room-bid-history { display:flex; flex-wrap:wrap; justify-content:space-between; gap:6px; color:#bfcdb9; font-size:10px; margin-top:10px; }
+.room-bid-history b { color:#f0dfb7; }
+.room-bid-rule-short,.room-bid-heading-short { display:none; }
+.room-bid-flight { position:absolute; inset:0; z-index:7; display:grid; place-items:center; pointer-events:none; animation:room-bid-to-seat .8s cubic-bezier(.3,0,.2,1) both; }
+.room-bid-flight span { display:grid; place-items:center; width:32px; height:32px; border-radius:50%; border:3px double #785f32; background:#dec48b; color:#211c10; font-size:13px; font-weight:700; }
+@keyframes room-bid-to-seat { from { opacity:1; transform:translate(0,0) scale(1); } to { opacity:0; transform:translate(calc(var(--bid-x) * 46%),calc(var(--bid-y) * 48%)) scale(.6); } }
+
+/* Ace effects transform an inner wrapper around the actual played card, so they
+   never fight Motion's layout/drag transforms or create a second card image. */
+.played-card-effect { display:grid; justify-items:center; width:100%; position:relative; }
+.played-card-effect[data-ace-kind="ordinary"] { z-index:2; animation:room-ordinary-ace 1s cubic-bezier(.16,1,.3,1) both; }
+.played-card-effect[data-ace-kind="trump"] { z-index:3; animation:room-trump-ace 1.8s cubic-bezier(.16,1,.3,1) both; }
+.room-concept .played-card-effect[data-ace-kind] .table-card { outline:1px solid #e5c98aaa; outline-offset:2px; }
+.ace-card-reflection { position:absolute; inset:0; pointer-events:none; border-radius:inherit; background:linear-gradient(110deg,transparent 30%,#fff4cbcc 49%,transparent 67%); opacity:0; animation:room-ace-reflection .9s ease both; }
+.table-play-effects { position:absolute; inset:0; pointer-events:none; z-index:1; }
+.table-play-effects--trump::before { content:""; position:absolute; inset:0; background:radial-gradient(ellipse,#02150d08,#02150d99); opacity:0; animation:room-ace-dim 1.8s ease both; }
+.table-ace-ripple { position:absolute; left:30%; right:30%; top:28%; bottom:28%; border:1px solid #edcf8a99; border-radius:50%; opacity:0; animation:room-ace-ripple 1s ease-out both; }
+.table-play-effects--trump .table-ace-ripple { animation-duration:1.8s; border-width:2px; }
+.table-ace-dust { position:absolute; inset:0; }
+.table-ace-dust i { position:absolute; left:50%; top:50%; width:2px; height:2px; border-radius:50%; background:#f4d99a; opacity:0; animation:room-ace-spark 1.8s ease-out both; }
+.table-ace-caption { position:absolute; bottom:12%; left:10%; right:10%; text-align:center; color:#f3e1b7; font-size:10px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; animation:room-ace-caption 1s ease both; }
+.table-ace-caption small { display:block; margin-top:4px; color:#d0d9c2; font-size:9px; font-weight:400; letter-spacing:0; text-transform:none; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.table-play-effects--trump .table-ace-caption { animation-duration:1.8s; }
+.poker-table[data-ace-effect="trump"] .poker-table__emblem span { animation:room-trump-emblem 1.8s ease both; }
+@keyframes room-ordinary-ace { 0% { transform:translateY(6px) scale(.95); } 35% { transform:translateY(-5px) scale(1.07); } 100% { transform:translateY(0) scale(1); } }
+@keyframes room-trump-ace { 0% { transform:translateY(10px) scale(.9); } 30%,50% { transform:translateY(-9px) scale(1.12); } 70% { transform:translateY(1px) scale(.99); } 100% { transform:translateY(0) scale(1); } }
+@keyframes room-ace-reflection { 0%,15% { opacity:0; transform:translateX(-60%); } 45% { opacity:.6; } 100% { opacity:0; transform:translateX(60%); } }
+@keyframes room-ace-ripple { 0%,30% { opacity:0; transform:scale(.5); } 50% { opacity:.8; } 100% { opacity:0; transform:scale(2.6); } }
+@keyframes room-ace-dim { 0%,100% { opacity:0; } 25%,70% { opacity:1; } }
+@keyframes room-ace-spark { 0%,35% { opacity:0; transform:translate(0,0); } 45% { opacity:.7; } 100% { opacity:0; transform:translate(var(--dx),var(--dy)); } }
+@keyframes room-ace-caption { 0% { opacity:0; transform:translateY(4px); } 25%,75% { opacity:1; transform:translateY(0); } 100% { opacity:0; transform:translateY(0); } }
+@keyframes room-trump-emblem { 0%,100% { opacity:.6; transform:scale(1); } 35%,65% { opacity:1; transform:scale(1.07); } }
+@keyframes room-crowded-ace { 0%,100% { transform:translateY(0) scale(1); } 40% { transform:translateY(-2px) scale(1.04); } }
+
+@media(min-width:601px) and (max-width:1100px) {
+  .room-concept .poker-table__center .table-center-bidding .room-bidding { padding:10px 14px; }
+  .room-bid-history { margin-top:6px; }.room-bid-rule { margin-top:6px; }
+}
+@media(max-width:600px) {
+  .room-concept.game-layout--bidding .table-seat:not([data-side]):not([data-pole]) { --seat-radius-x:51%; }
+  .room-concept .poker-table__center .table-center-bidding .room-bidding { width:clamp(160px,52vw,280px); max-height:calc(100% - 4px); padding:10px; border-radius:10px; }
+  .room-concept .room-bid-head h3 { font-size:16px; line-height:18px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+  .room-bid-head { gap:4px; }.room-bid-clock { font-size:12px; }
+  .room-bid-intro,.room-bid-history,.room-bid-rule-full,.room-bid-heading-full { display:none; }
+  .room-bid-rule-short,.room-bid-heading-short { display:inline; }
+  .room-bid-scroll { gap:4px; padding:3px 3px 4px; }
+  .room-bid-choice { flex-basis:44px; min-height:44px; }
+  .room-bid-choice > span { width:39px; height:39px; font-size:15px; }
+  .room-bid-choice input:checked + span { transform:translateY(-1px) rotate(-5deg); }
+  .room-concept .room-bid-confirm { min-height:44px; margin-top:4px; padding:6px 2px; font-size:10px; }
+  .room-bid-rule { font-size:10px; line-height:1.4; margin-top:6px; }
+  .room-bid-error { font-size:9px; padding:4px; margin-top:4px; }
+  .table-ace-caption { font-size:8px; bottom:8%; }.table-ace-caption small { display:none; }
+  .room-concept .played-card-grid:has(.played-card-slot:nth-child(5)) .played-card-effect[data-ace-kind] { animation-name:room-crowded-ace; }
+}
+
+/* Polish: flat card artwork, quiet controls, and explicit bid states. */
+@media(pointer:coarse) {
+  .room-concept .room-nav-button { min-height:44px; min-width:44px; }
+}
+.room-concept .room-bid-head { align-items:baseline; gap:12px; }
+.room-bid-clock { min-width:3ch; text-align:right; }
+.room-bid-scroll { margin-block:4px 8px; padding-block:9px 12px; border-bottom:1px solid #e5c98a33; }
+.room-bid-scroll::-webkit-scrollbar { display:block; height:5px; }
+.room-bid-scroll::-webkit-scrollbar-thumb { background:#bba16c; border-radius:5px; }
+.room-bid-choice:has(input:not(:disabled)):hover > span { border-color:#f1dfb7; }
+.room-bidding[aria-busy="true"] .room-bid-choice input:checked + span { opacity:1; outline:1px solid #f1dfb7; outline-offset:2px; }
+.room-bid-choice.is-forbidden > span { opacity:.5; }
+.room-bid-history { padding-top:8px; border-top:1px solid #e5c98a24; }
+.room-concept .playing-card,.room-concept .fan-card-wrap,.room-concept .played-card-slot { transform-style:flat; perspective:none; will-change:auto; }
+.room-concept .fan-hand { perspective:none; }
+.room-concept .playing-card { rotate:none; translate:none; }
+.room-concept .playing-card__art--face { transform:none; width:110.46%; height:107.46%; max-width:none; position:absolute; left:-5.23%; top:-3.73%; }
+.room-concept .playing-card.table-card { backdrop-filter:none; -webkit-backdrop-filter:none; filter:none; }
+.room-concept .playing-card.is-pending { filter:none; }
+.room-concept .poker-table__center .table-felt { transform:none; backdrop-filter:none; -webkit-backdrop-filter:none; }
+.room-concept .played-card-effect { animation-fill-mode:none; }
+.room-concept .hand-play-error { margin:0; max-width:420px; color:#ffc5b8; font-size:12px; text-align:center; }
+.room-concept .hand-play-pending { margin:0; color:#eedbb2; font-size:12px; }
+@media(prefers-reduced-motion:reduce) {
+  .room-bid-flight { display:none; }
+  .table-play-effects::before,.table-ace-ripple,.table-ace-dust,.ace-card-reflection { display:none; }
+}
+@media(prefers-reduced-transparency:reduce) {
+  .room-concept .poker-table__center .table-center-bidding .room-bidding { background:#102b22; backdrop-filter:none; -webkit-backdrop-filter:none; }
+}

@@ -244,3 +244,63 @@ Set up the monolithic file structure containing the Node.js backend and React fr
 - Start the server on port 3001.
 - Start the Vite dev server on port 3000.
 - Verify that the client can establish a basic WebSocket connection to the server.
+
+---
+
+## 9. Live Playtest Review & Improvement Backlog (2026-11-04)
+
+Source: live playtest review of `https://judgement-x0wl.onrender.com/` on Nov 4, 2026. The playtest used two active players and one mid-round joiner. Desktop, phone, and tablet layouts were emulated in one desktop browser; this is not real-device cross-play verification. See the review notes supplied with this backlog for screenshots and the complete list of untested paths.
+
+### 9.1 Priority 0 — Session identity and connection recovery
+
+- [ ] **P0 — Prevent same-browser tab session takeover.** Reproduced twice: tabs share the `judgement-session` / `judgement-player-id` localStorage identity, and a subsequent connection can replace the previous socket for that player. Use tab-scoped identity persistence (survives reload in that tab but is isolated across tabs) or an equally robust ownership design. Define how a user intentionally transfers/reclaims a seat across tabs/devices.
+- [ ] **P0 — Detect stale sockets and show truthful connection state.** A displaced tab remained labeled “Connected” with a frozen room snapshot. Track room synchronization/ownership separately from transport connectivity; surface reconnecting, session-conflict, and successful recovery states, and prevent silent seat swapping.
+- [ ] **P0 — Verify recovery and hand persistence.** Deliberately test refresh and reconnect mid-round and compare server-authoritative hand, seat, score, and phase before/after. The apparent hand change during round 3 was uncertain and is not a confirmed defect.
+- [ ] **P0 — Exercise reconnect paths beyond tab takeover.** Test transient network loss and phone lock/unlock, including recovery while a turn timer is running.
+
+**Acceptance:** Two tabs in the same browser can act as distinct players; a same-tab reload resumes the intended player; stale clients cannot present a false healthy state; reconnect never re-deals or changes authoritative game state.
+
+### 9.2 Priority 1 — Host and room lifecycle controls
+
+- [ ] **P1 — Mid-game join policy.** Add host-configurable room lock and/or approval before a late joiner can enter. The playtest confirmed that a room-code holder could join mid-match and take a seat for a later round. Preserve spectatorship only if explicitly allowed by the selected policy.
+- [ ] **P1 — Make player management available in intended phases.** The playtest did not find kick controls during active play, while project documentation says kick support exists in some phases. Verify actual server permissions and UI phase visibility; expose host kick controls where allowed and communicate restrictions.
+- [ ] **P1 — Define host departure behavior.** Host migration was not deliberately tested. Decide whether host authority transfers to an eligible connected player or the room remains hostless, then implement and explain the chosen behavior.
+- [ ] **P1 — Abandoned-room cleanup.** Rooms appeared to continue auto-playing while nobody was connected; expiry and cleanup were not verified. Define an inactivity policy and test that active players are not removed unexpectedly.
+
+**Acceptance:** Join policy is enforced server-side; host actions match documented phase permissions; host disconnect and empty-room behavior are deterministic and visible to players.
+
+### 9.3 Priority 2 — Rules comprehension and gameplay feedback
+
+- [ ] **P2 — Add a “How to play” / Rules panel reachable from the lobby and in-game.** Explain bidding order, the forbidden final bid, follow-suit, trump rotation, scoring, round progression, and timer fallback behavior.
+- [ ] **P2 — Explain the forbidden bid inline.** The illegal bid was correctly disabled, but the reason was not apparent. Identify the forbidden value and show the bid-total calculation next to the disabled choice.
+- [ ] **P2 — Improve card confirmation.** The two-step select-then-confirm card flow was easy to miss. Make confirmation unmistakable or consider one-tap play with an undo window, subject to game-state/race constraints.
+- [ ] **P2 — Strengthen active-turn and trick feedback.** Increase active-player emphasis and make completed trick/winner moments more prominent and long enough to read.
+- [ ] **P2 — Confirm and document scoring.** Current documented formula awards 10 points for a successful zero bid and `bid * 10` for a positive exact bid; verify zero, bust, and hook/down-curve edge cases in a full game.
+
+### 9.4 Priority 2 — Responsive layout and accessibility
+
+- [ ] **P2 — Tablet portrait layout.** Reduce wasted space between table and hand; use the available viewport more effectively.
+- [ ] **P2 — Phone landscape layout.** Prevent clipped status content and table overflow; use a compact landscape composition or a clear rotate-device hint.
+- [ ] **P2 — Audit contrast, touch targets, and safe areas** on physical iOS, Android, and iPad devices. Emulated viewport checks do not establish hardware behavior.
+- [ ] **P2 — Review ads at small sizes.** Ads loaded but none visibly rendered in the test; verify actual placement and ensure they do not overlap the table or hand.
+
+### 9.5 Full-game and real-device verification gate
+
+- [ ] Play a complete match through the end condition, final standings/winner presentation, and rematch.
+- [ ] Play complete bidding rounds with at least three active players; cover zero bids, busts, hook rule, and descending rounds.
+- [ ] Verify room cleanup, host departure, and late-join policy under deliberate scenarios.
+- [ ] Test audio playback, deal/bid/turn/win effects, mute persistence, iOS autoplay, and any haptics on real hardware. The review only confirmed a mute toggle was visible; playback and haptics were not tested.
+- [ ] Run real-device passes on iOS Safari, Android Chrome, and iPad for touch interaction, safe areas, audio, and lock/unlock reconnection.
+
+### 9.6 Later product enhancements (not confirmed defects)
+
+- [ ] Expand host configuration: timer lengths, scoring variants, round sequence, minimum players, and optional bots.
+- [ ] Consider lightweight social interactions (chat, emotes, reactions) after core reliability and gameplay clarity are addressed.
+
+### Recommended implementation order
+
+1. P0 identity isolation, stale-tab detection, connection states, and authoritative reconnect verification.
+2. P1 join policy, host management/migration decision, and abandoned-room lifecycle.
+3. Rules help, forbidden-bid explanation, and card/turn/trick feedback.
+4. Responsive and accessibility fixes, followed by physical-device verification.
+5. Full-match verification, then optional configuration and social features.
