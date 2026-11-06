@@ -1,0 +1,7 @@
+.room-preview-tools { position:relative; max-width:1000px; margin:0 auto 30px; padding:24px; border:1px dashed #e5c98a66; border-radius:12px; color:#f7efdc; background:#102b22; font-family:"DM Sans",sans-serif; }
+.room-preview-tools h2 { margin:0; font:600 28px "Cormorant Garamond",serif; }.room-preview-tools p { color:#c7d1bf; font-size:12px; line-height:1.6; }
+.room-preview-scenarios,.room-preview-actions { display:flex; flex-wrap:wrap; align-items:end; gap:10px; margin:15px 0; }
+.room-preview-tools button { min-height:44px; padding:10px 14px; border:1px solid #dec58d66; border-radius:8px; color:#ead8b0; background:#163b2b; font-size:12px; }
+.room-preview-tools button[aria-pressed="true"] { background:#dfc38a; color:#241b0e; }.room-preview-tools label { display:grid; gap:7px; font-size:12px; }.room-preview-tools select { min-height:44px; padding:8px; border-radius:6px; background:#143528; color:#f7efdc; border:1px solid #dec58d66; }
+.room-preview-tools a { color:#e5c98a; font-size:12px; }.room-preview-tools button:focus-visible,.room-preview-tools select:focus-visible { outline:2px solid #f7efdc; outline-offset:3px; }
+@media(max-width:600px) { .room-preview-tools { margin:0 5% 20px; padding:16px; }.room-preview-actions > * { flex:1 1 auto; } }
