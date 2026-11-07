@@ -188,50 +188,84 @@ html:has(.room-concept) { scrollbar-gutter:stable; }
 @media(max-width:1000px) {
   .room-concept .room-table-frame { grid-template-columns:1fr 1fr; }
   .room-table-spacer { display:none; }.room-table-stage { grid-column:1/-1; grid-row:1; width:100%; max-width:850px; margin:auto; }
-  .room-navbar__items { flex-basis:100%; justify-content:space-between; }
   .room-concept .table-seat { width:108px; }
 }
-@media(max-width:600px) {
-  .room-concept .room-navbar { display:grid; grid-template-columns:1fr; padding:10px 5%; gap:8px; }
-  .room-navbar__brand { font-size:22px; }
-  .room-navbar__items { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); width:100%; gap:4px 6px; }
-  .room-metric { font-size:11px; }.room-metric > span { font-size:8px; letter-spacing:.08em; }
-  .room-concept .trump-name { font-size:11px; }
-  .room-concept .room-nav-button { width:100%; min-height:44px; padding:6px; background:transparent; border-color:transparent; }
-  .room-concept .room-nav-button--primary { background:#dfc38a; border-color:#f0dcaa; }
-  .room-dropdown--utility { grid-column:4; grid-row:1; }
-  .room-dropdown--scores { grid-column:1; grid-row:2; }.room-host-toggle { grid-column:2; grid-row:2; }
-  .room-exit { grid-column:3; grid-row:2; }.room-start-bidding { grid-column:1/-1; grid-row:3; }
-  .room-dropdown--scores .room-popover { left:0; right:auto; width:min(225px,85vw); }
-  .room-concept .room-intro { padding-top:30px; }.room-intro p { font-size:12px; }
-  .room-concept .room-table-frame { grid-template-columns:1fr; padding:15px 5% 30px; gap:10px; }
-  .room-table-stage { padding:60px 0 50px; }
-  .room-concept .poker-table { --seat-radius-x:39%; --seat-radius-y:54%; padding:13px; }
+/* Mobile game layout. Desktop rules above remain the source of desktop composition. */
+.room-mobile-options { display:none; }
+@media(max-width:860px) {
+  html:has(.room-concept) { scrollbar-gutter:auto; }
+  .game-layout.room-concept { --mobile-dock-height:clamp(132px,22dvh,190px); min-height:100dvh; padding-bottom:calc(var(--mobile-dock-height) + env(safe-area-inset-bottom,0px)); }
+  .game-layout--round-summary.room-concept,.game-layout--game-over.room-concept { padding-bottom:env(safe-area-inset-bottom,0px); }
+  .room-concept .room-navbar { display:flex; flex-wrap:nowrap; width:100%; min-height:58px; padding:calc(6px + env(safe-area-inset-top,0px)) max(10px,env(safe-area-inset-right,0px)) 6px max(10px,env(safe-area-inset-left,0px)); gap:6px; }
+  .room-navbar__brand { flex:none; font-size:clamp(13px,2.6vw,20px); letter-spacing:.035em; }
+  .room-navbar__items { display:flex; flex:1 1 auto; min-width:0; justify-content:flex-end; gap:3px; }
+  .room-concept .room-navbar .room-navbar__items > .room-code-btn,.room-navbar__items > .room-start-bidding,.room-navbar__items > .room-host-toggle { display:none; }
+  .room-metric { display:flex; flex-direction:column; align-items:center; justify-content:center; flex:none; min-width:35px; gap:2px; font-size:10px; line-height:1.1; }
+  .room-metric > span { font-size:8px; letter-spacing:.04em; }
+  .room-metric > strong { font-size:11px; }
+  .room-concept .trump-name { display:none; }
+  .room-concept .room-metric .trump-pip { font-size:17px; }
+  .room-concept .room-nav-button { min-width:38px; min-height:44px; padding:4px 6px; font-size:11px; }
+  .room-navbar__items > .room-dropdown--scores .room-nav-button { font-size:0; }
+  .room-navbar__items > .room-dropdown--scores .room-nav-button::before { content:"\25A4"; font-size:20px; line-height:1; }
+  .room-navbar__items > .room-dropdown--scores .room-nav-button span { display:none; }
+  .room-exit__text { display:none; }
+  .room-navbar__items > .room-exit { font-size:21px; }
+  .room-navbar__items > .room-dropdown--utility .room-nav-button { font-size:18px; letter-spacing:0; }
+  .room-concept .room-popover { position:fixed; top:calc(var(--room-navbar-height,58px) + 4px); right:max(10px,env(safe-area-inset-right,0px)); left:auto; width:min(300px,calc(100vw - 20px)); max-height:calc(100dvh - var(--room-navbar-height,58px) - 12px); padding:16px; }
+  .room-dropdown--scores .room-popover { right:56px; }
+  .room-mobile-options { display:grid; gap:6px; margin-bottom:12px; padding-bottom:12px; border-bottom:1px solid #e5c98a33; }
+  .room-mobile-options .room-code-btn { width:100%; min-height:44px; justify-content:center; border:1px solid #e4cd942b; }
+  .room-mobile-options .room-nav-button { width:100%; justify-content:center; }
+  .room-statusbar { width:100%; padding:4px 10px 0; min-height:25px; font-size:12px; color:#f1dfb5; }
+  .room-statusbar .room-connection-notice { font-size:11px; }
+  .room-concept .room-table-frame { display:flex; flex:1 1 auto; min-height:0; width:100%; padding:4px max(8px,env(safe-area-inset-left,0px)) 0 max(8px,env(safe-area-inset-right,0px)); gap:0; align-items:stretch; }
+  .room-table-spacer { display:none; }
+  .room-table-stage { display:flex; flex:1 1 auto; flex-direction:column; justify-content:center; min-height:0; width:100%; max-width:none; margin:0; padding:18px 0 16px; }
+  .room-concept .table-wrap { display:grid; flex:1 1 auto; place-items:end center; min-height:0; width:100%; padding-bottom:20px; }
+  .room-concept .poker-table { --seat-radius-x:42%; --seat-radius-y:46%; width:min(calc(100% - 20px),calc((100dvh - var(--mobile-dock-height) - var(--room-navbar-height,58px) - 85px) * 1.08)); aspect-ratio:1.05; padding:13px; }
   .room-concept .poker-table__felt { inset:13px; border-width:6px; }
-  .room-concept .table-seat { width:86px; }
-  .room-concept .table-seat[data-pole="true"] { --seat-radius-y:62%; }
+  .room-concept .table-seat { width:clamp(70px,11vw,96px); }
   .room-concept .poker-table .seat { min-height:36px; padding:5px; gap:4px; }
   .room-concept .seat-avatar-wrap { width:20px; height:20px; flex-basis:20px; }
   .room-concept .seat-avatar { width:20px; height:20px; font-size:12px; }
-  .room-concept .seat-name { font-size:10px; }.room-concept .seat-status,.room-concept .seat-bid-badge { font-size:8px; }
+  .room-concept .seat-name { font-size:10px; }
+  .room-concept .seat-status,.room-concept .seat-bid-badge { font-size:8px; }
   .room-concept .seat-host { font-size:7px; }
   .room-concept .seat-timer { width:26px; height:26px; }
-  .room-concept .seat-sit,.room-concept .seat-empty { width:73px; height:36px; min-height:36px; font-size:9px; }
-  .room-concept .seat-fan { height:23px; }.room-concept .seat-fan__card { width:16px; height:23px; transform:translateX(-50%) translateX(calc((var(--i) - (var(--n) - 1) / 2) * 8px)) rotate(calc((var(--i) - (var(--n) - 1) / 2) * 12deg)); }
-  .room-concept .poker-table__center { inset:23% 22%; }
+  .room-concept .seat-sit,.room-concept .seat-empty { width:70px; height:36px; min-height:36px; font-size:9px; }
+  .room-concept .seat-fan { height:23px; }
+  .room-concept .seat-fan__card { width:16px; height:23px; transform:translateX(-50%) translateX(calc((var(--i) - (var(--n) - 1) / 2) * 8px)) rotate(calc((var(--i) - (var(--n) - 1) / 2) * 12deg)); }
+  .room-concept .table-seat:has(.seat-empty) { opacity:.28; z-index:1; }
+  .room-concept .table-seat:has(.seat-empty) .seat-empty { width:28px; height:28px; min-height:28px; overflow:hidden; font-size:0; }
+  .room-concept .poker-table__center { inset:22% 19%; }
   .room-concept .played-card-grid { width:100%; gap:4px; }
   .room-concept .played-by { font-size:8px; max-width:40px; }
   .room-concept .played-card-grid:has(.played-card-slot:nth-child(5)) { --card-w-table:44px; }
   .room-concept .played-card-grid:has(.played-card-slot:nth-child(5)) .played-by { display:none; }
-  .room-concept .self-area { margin-top:62px; }
-  .room-concept .fan-hand { min-height:128px; padding:24px 8px 12px; }
-  .room-concept .table-lobby-note { font-size:10px; }.room-concept .table-lobby-note__title { font-size:21px; }.room-concept .table-lobby-note strong { font-size:25px; }
+  .room-concept .self-area { position:fixed; z-index:25; inset:auto 0 0; display:flex; justify-content:flex-start; width:100%; height:calc(var(--mobile-dock-height) + env(safe-area-inset-bottom,0px)); max-height:none; margin:0; padding:4px max(8px,env(safe-area-inset-right,0px)) env(safe-area-inset-bottom,0px) max(8px,env(safe-area-inset-left,0px)); border:1px solid #e5c98a44; border-bottom:0; border-radius:14px 14px 0 0; background:linear-gradient(180deg,#174232f5,#081d16f9); box-shadow:0 -12px 28px #00150e77; }
+  .room-concept .fan-hand { flex:1 1 auto; min-height:0; max-height:none; height:100%; padding:12px 4px 2px; }
+  .room-concept .hand { height:100%; min-height:0; gap:0; }
+  .room-concept .play-action-slot { flex:none; min-height:40px; }
+  .room-concept .play-fab { min-height:44px; min-width:120px; }
+  .room-concept .spectator-bar { margin:8px auto; }
+  .room-concept .table-lobby-note { font-size:10px; }
+  .room-concept .table-lobby-note__title { font-size:21px; }
+  .room-concept .table-lobby-note strong { font-size:25px; }
   .room-concept .table-deck,.room-concept .deal-fly-card { --deck-card-w:22px; }
-  .room-concept .table-center-bidding .bidding-panel { padding:8px; }
-  .poker-table__wordmark { font-size:7px; }.poker-table__emblem span { font-size:95px; }
-  .room-dust { inset:150px 12% 30%; }
-  .room-concept .overlay--admin { align-items:flex-end; padding:12px; }
-  .room-concept .admin-card { max-height:80dvh; width:100%; }
+  .poker-table__wordmark { font-size:7px; }
+  .poker-table__emblem span { font-size:95px; }
+  .room-dust { inset:80px 12% 25%; }
+  .room-concept .overlay--admin { inset:var(--room-navbar-height,58px) 0 0; align-items:flex-start; padding:8px; }
+  .room-concept .host-management { width:100%; max-height:calc(100dvh - var(--room-navbar-height,58px) - 16px); padding:16px; }
+  .room-round-summary { width:calc(100% - 16px); margin:8px auto; }
+  .room-concept .room-round-summary > .overlay-card { padding:14px; }
+  .room-round-summary .score-row { grid-template-columns:minmax(0,1fr) auto; gap:5px; }
+  .room-round-summary .score-row .mini-avatar { display:none; }
+  .room-round-summary .score-row .score-line { grid-column:1/-1; }
+  .room-round-summary .overlay-actions > button { flex:1 1 auto; }
+  .room-summary-timer { flex-basis:100%; justify-content:space-between; }
+  .game-layout--round-summary .room-table-frame,.game-layout--game-over .room-table-frame { display:none; }
 }
 @media(max-width:360px) {
   .room-concept .table-seat[data-side] .seat-fan { top:50%; bottom:auto; left:calc(100% + 12px); height:17px; }
@@ -441,4 +475,26 @@ html:has(.room-concept) { scrollbar-gutter:stable; }
 }
 @media(prefers-reduced-transparency:reduce) {
   .room-concept .poker-table__center .table-center-bidding .room-bidding { background:#102b22; backdrop-filter:none; -webkit-backdrop-filter:none; }
+}
+
+@media(max-width:860px) and (max-height:500px) and (orientation:landscape) {
+  .game-layout.room-concept { --mobile-dock-height:108px; }
+  .room-concept .room-table-frame { padding-top:0; }
+  .room-table-stage { padding:3px 0 8px; }
+  .room-concept .table-wrap { place-items:center; padding-bottom:0; }
+  .room-concept .poker-table { width:min(70vw,calc((100dvh - var(--room-navbar-height,58px) - 150px) * 1.7)); aspect-ratio:1.7; --seat-radius-x:45%; --seat-radius-y:45%; padding:9px; }
+  .room-concept .poker-table__felt { inset:9px; border-width:4px; }
+  .room-concept .table-seat { width:68px; }
+  .room-concept .poker-table .seat { min-height:30px; padding:3px; }
+  .room-concept .seat-fan { display:none; }
+  .room-concept .self-area { --card-w-hand:50px; padding-top:0; }
+  .room-concept .fan-hand { padding-top:0; }
+  .room-concept .play-action-slot { min-height:34px; }
+  .room-concept .poker-table__center .table-center-bidding .room-bidding { width:min(270px,88%); max-height:calc(100% - 4px); padding:6px 9px; }
+  .room-concept .room-bid-head h3 { font-size:16px; line-height:1.1; }
+  .room-bid-intro,.room-bid-rule,.room-bid-history { display:none; }
+  .room-bid-scroll { margin:2px 0; padding:3px 0; }
+  .room-concept .room-bid-confirm { min-height:38px; margin-top:2px; }
+  .room-round-summary { max-height:calc(100dvh - var(--room-navbar-height,58px) - 35px); overflow-y:auto; overscroll-behavior:contain; }
+  .room-concept .room-round-summary > .overlay-card { padding:10px; }
 }

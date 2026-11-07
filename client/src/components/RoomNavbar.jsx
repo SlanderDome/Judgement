@@ -84,7 +84,7 @@ export function RoomNavbar({ roomState, clientPlayerId, isConnected, connectionS
         <div className="room-metric"><span>Round</span><strong>{lobby ? "Waiting" : `No. ${roomState.gameConfig.roundNumber}`}</strong></div>
         <RoomCodeButton roomId={roomState.roomId} disabled={adminOpen} />
         <div className="room-dropdown room-dropdown--scores" data-room-dropdown="scores">
-          <button type="button" className="room-nav-button" ref={scoreRef} disabled={adminOpen} aria-expanded={open === "scores"} aria-controls="room-live-scores" onClick={() => setOpen(open === "scores" ? null : "scores")}>Scores <span aria-hidden="true">⌄</span></button>
+          <button type="button" className="room-nav-button" ref={scoreRef} disabled={adminOpen} aria-label="Scores" aria-expanded={open === "scores"} aria-controls="room-live-scores" onClick={() => setOpen(open === "scores" ? null : "scores")}>Scores <span aria-hidden="true">⌄</span></button>
           {open === "scores" && <section className="room-popover" id="room-live-scores" aria-label="Live standings">
             <h2>Standings</h2>
             {scores.length ? scores.map(player => <div className={`room-score-row ${player.playerId === clientPlayerId ? "is-you" : ""}`} key={player.playerId}><span title={player.nickname}>{player.nickname}{player.playerId === clientPlayerId ? " (you)" : ""}</span><strong>{player.score ?? 0}</strong></div>) : <p>Take a seat to join the standings.</p>}
@@ -92,11 +92,17 @@ export function RoomNavbar({ roomState, clientPlayerId, isConnected, connectionS
         </div>
         {isHost && preBidding && <button type="button" className="room-nav-button room-nav-button--primary room-start-bidding" disabled={starting || hostBusy || adminOpen || !isConnected || roomState.paused === true} onClick={startBidding}>{starting ? "Starting bidding…" : "Start bidding now"}</button>}
         {isHost && <button type="button" className="room-nav-button room-host-toggle" aria-haspopup="dialog" aria-expanded={adminOpen} aria-controls="room-host-dialog" onClick={() => { setOpen(null); onToggleHost(); }}>Host {waiting > 0 && <span className="room-waiting-count" aria-label={`${waiting} waiting or joining next round`}>{waiting}</span>}</button>}
-        <button type="button" className="room-nav-button room-exit" disabled={adminOpen} onClick={onExit}>Exit <span aria-hidden="true">↗</span></button>
+        <button type="button" className="room-nav-button room-exit" disabled={adminOpen} aria-label="Exit room" onClick={onExit}><span className="room-exit__text">Exit</span> <span aria-hidden="true">↗</span></button>
         <div className="room-dropdown room-dropdown--utility" data-room-dropdown="utility">
           <button type="button" className="room-nav-button" ref={utilityRef} disabled={adminOpen} aria-label="Table options" aria-expanded={open === "utility"} aria-controls="room-utilities" onClick={() => setOpen(open === "utility" ? null : "utility")}>•••</button>
           {open === "utility" && <section className="room-popover" id="room-utilities" aria-label="Table options">
-            <h2>Table options</h2><SoundToggle /><ConnectionBadge status={connectionStatus} />
+            <h2>Table options</h2>
+            <div className="room-mobile-options">
+              <RoomCodeButton roomId={roomState.roomId} disabled={adminOpen} />
+              {isHost && preBidding && <button type="button" className="room-nav-button room-nav-button--primary" disabled={starting || hostBusy || adminOpen || !isConnected || roomState.paused === true} onClick={startBidding}>{starting ? "Starting bidding…" : "Start bidding now"}</button>}
+              {isHost && <button type="button" className="room-nav-button" aria-haspopup="dialog" aria-expanded={adminOpen} aria-controls="room-host-dialog" onClick={() => { setOpen(null); onToggleHost(); }}>Host controls {waiting > 0 && `(${waiting} waiting)`}</button>}
+            </div>
+            <SoundToggle /><ConnectionBadge status={connectionStatus} />
             {!lobby && <p>{roomState.gameConfig.cardsInRound} cards per player <span aria-label={roomState.gameConfig.phase === "ASCENDING" ? "Ascending" : "Descending"}>{roomState.gameConfig.phase === "ASCENDING" ? "↑" : "↓"}</span></p>}
             {isHost && !lobby && !gameOver && <button type="button" className="room-nav-button" disabled={!isConnected || hostBusy || pausePending} onClick={pauseGame}>{pausePending ? "Confirming…" : roomState.paused ? "Resume game" : "Pause game"}</button>}
           </section>}
