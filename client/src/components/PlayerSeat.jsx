@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { TurnTimerBar } from "./TurnTimerBar.jsx";
 
 function PlayerSeatComponent({
@@ -13,6 +13,7 @@ function PlayerSeatComponent({
   timerEndsAt = null,
   timerDurationMs = null
 }) {
+  const reduced = useReducedMotion();
   const hue = ((player.seatIndex ?? 0) * 137.508) % 360;
   const hasBid = player.currentBid != null;
   const isOffline = !player.isOnline;
@@ -37,7 +38,7 @@ function PlayerSeatComponent({
       ].join(" ")}
       style={{ "--seat-hue": hue, zIndex: isTurn ? 7 : undefined }}
       aria-label={`${player.nickname}${isClient ? ", you" : ""}${isHost ? ", host" : ""}${isDealer ? ", dealer" : ""}${seatStatus ? `, ${seatStatus}` : ""}${hasBid ? `, bid ${player.currentBid}, ${player.tricksWon ?? 0} tricks won` : ""}`}
-      initial={{ opacity: 0, y: 8 }}
+      initial={reduced ? false : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.18, ease: "easeOut" }}
     >
@@ -61,7 +62,8 @@ function PlayerSeatComponent({
             className="seat-bid-badge"
             title={`Bid: ${player.currentBid}, Tricks won: ${player.tricksWon}`}
           >
-            Bid {player.currentBid} · {player.tricksWon ?? 0} won
+            <span className="seat-bid-full">Bid {player.currentBid} · {player.tricksWon ?? 0} won</span>
+            <span className="seat-bid-compact" aria-hidden="true">B{player.currentBid} · W{player.tricksWon ?? 0}</span>
           </span>
         ) : <span className="seat-status">{isClient ? "You" : isHost ? "Host" : "Seated"}</span>}
       </div>

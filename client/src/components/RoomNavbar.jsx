@@ -78,7 +78,7 @@ export function RoomNavbar({ roomState, clientPlayerId, isConnected, connectionS
 
   return (
     <header className="room-navbar" ref={navbarRef}>
-      <span className="room-navbar__brand"><span aria-hidden="true">♠</span> JUDGEMENT</span>
+      <span className="room-navbar__brand">JUDGEMENT</span>
       <nav className="room-navbar__items" aria-label="Table controls">
         <div className="room-metric room-metric--trump"><span>Trump suit</span>{lobby ? <strong>Not dealt</strong> : <TrumpIndicator roomState={roomState} showName />}</div>
         <div className="room-metric"><span>Round</span><strong>{lobby ? "Waiting" : `No. ${roomState.gameConfig.roundNumber}`}</strong></div>

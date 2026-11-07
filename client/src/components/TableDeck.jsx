@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { CARD_BACK } from "../lib/cards.js";
 import { dealerPlayer, isRoundActive, seatDisplaySlot, seatUnitVector, seatedPlayers } from "../lib/seats.js";
 
@@ -50,6 +50,7 @@ function buildFlights(roomState, total, viewerSeat) {
 }
 
 export function TableDeck({ roomState, dealPhase, total, viewerSeat }) {
+  const reduced = useReducedMotion();
   if (!isRoundActive(roomState.status)) {
     return null;
   }
@@ -65,7 +66,7 @@ export function TableDeck({ roomState, dealPhase, total, viewerSeat }) {
   };
   const atRest = { left: `${REST_LEFT}%`, top: `${REST_TOP}%` };
 
-  const flights = dealing ? buildFlights(roomState, total, viewerSeat) : [];
+  const flights = dealing && !reduced ? buildFlights(roomState, total, viewerSeat) : [];
 
   return (
     <>
@@ -79,7 +80,7 @@ export function TableDeck({ roomState, dealPhase, total, viewerSeat }) {
           x: "-50%",
           y: "-50%"
         }}
-        transition={{ duration: dealing ? 0.18 : 0.55, ease: "easeInOut" }}
+        transition={{ duration: reduced ? 0 : dealing ? 0.18 : 0.55, ease: "easeInOut" }}
       >
         <div className="table-deck__stack">
           {Array.from({ length: STACK }).map((_v, i) => (
@@ -102,7 +103,7 @@ export function TableDeck({ roomState, dealPhase, total, viewerSeat }) {
           src={CARD_BACK}
           alt=""
           draggable={false}
-          initial={{ left: atDealer.left, top: atDealer.top, x: "-50%", y: "-50%", rotate: -6, scale: 0.8, opacity: 0 }}
+          initial={{ left: atDealer.left, top: atDealer.top, x: "-50%", y: "-50%", rotate: -6, scale: 0.92, opacity: 0 }}
           animate={{
             left: f.left,
             top: f.top,
@@ -110,9 +111,9 @@ export function TableDeck({ roomState, dealPhase, total, viewerSeat }) {
             y: "-50%",
             rotate: f.rotate,
             scale: 1,
-            opacity: [0, 1, 1, 0.9, 0]
+            opacity: [0, 1, 1, 1, 0]
           }}
-          transition={{ delay: f.delay, duration: 0.52, times: [0, 0.14, 0.6, 0.85, 1], ease: "easeOut" }}
+          transition={{ delay: f.delay, duration: 0.5, times: [0, 0.12, 0.64, 0.84, 1], ease: [0.22, 1, 0.36, 1] }}
         />
       ))}
     </>
