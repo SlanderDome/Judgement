@@ -19,8 +19,6 @@ export function PlayingHand({ cards, isMyTurn, legalCardIds, onPlayCard, dropZon
   const attemptRef = useRef(0);
   const [fan, setFan] = useState({ overlap: 0, cardWidth: null, overflowing: false });
   const handRef = useRef(null);
-  const baseCardWidthRef = useRef(null);
-  const viewportWidthRef = useRef(typeof window === "undefined" ? 0 : window.innerWidth);
 
   const selectedCard = cards.find((card) => card.id === selectedCardId);
 
@@ -183,10 +181,6 @@ export function PlayingHand({ cards, isMyTurn, legalCardIds, onPlayCard, dropZon
       }
 
       const cardEl = container.querySelector(".playing-card");
-      if (window.innerWidth !== viewportWidthRef.current) {
-        viewportWidthRef.current = window.innerWidth;
-        baseCardWidthRef.current = null;
-      }
       // Measure the untransformed CSS baseline, not the previous fitted width or
       // a hovered/selected card. Otherwise resizing carries desktop card sizes
       // into the mobile hand and each rotation can inflate the next measurement.
@@ -198,9 +192,9 @@ export function PlayingHand({ cards, isMyTurn, legalCardIds, onPlayCard, dropZon
         if (fittedWidth) container.style.setProperty("--hand-card-width", fittedWidth);
         else container.style.removeProperty("--hand-card-width");
       }
-      const cardWidth = baseCardWidthRef.current ?? measuredWidth;
-      baseCardWidthRef.current ??= measuredWidth;
-      const available = Math.max(0, container.clientWidth - 32);
+      const cardWidth = measuredWidth;
+      const style = window.getComputedStyle(container);
+      const available = Math.max(0, container.clientWidth - (parseFloat(style.paddingLeft) || 0) - (parseFloat(style.paddingRight) || 0));
       const count = Math.max(cards.length, 1);
 
       // Shrink cards until the hand fits while preserving enough of each card
@@ -214,11 +208,7 @@ export function PlayingHand({ cards, isMyTurn, legalCardIds, onPlayCard, dropZon
       const maxAllowedOverlap = nextCardWidth * 0.48;
       const overlap = count > 1 ? Math.min(maxAllowedOverlap, Math.max(-6, rawOverlap)) : 0;
       const totalWidth = nextCardWidth * count - overlap * Math.max(0, count - 1);
-      const isMobile = window.innerWidth <= 560;
-      const mobileRowCapacity = Math.max(4, Math.floor(available / 58));
-      const overflowing = isMobile
-        ? count > mobileRowCapacity
-        : totalWidth > available + 1;
+      const overflowing = totalWidth > available + 1;
 
       setFan({ overlap, cardWidth: nextCardWidth, overflowing });
     }
@@ -248,8 +238,8 @@ export function PlayingHand({ cards, isMyTurn, legalCardIds, onPlayCard, dropZon
           {cards.map((card, index) => {
             const centerOffset = index - (cards.length - 1) / 2;
             const maxRotation = Math.min(10, Math.max(2, 32 / Math.max(cards.length, 1)));
-            const rotation = centerOffset * maxRotation;
-            const y = Math.abs(centerOffset) * 4;
+            const rotation = fan.overflowing ? 0 : centerOffset * maxRotation;
+            const y = fan.overflowing ? 0 : Math.abs(centerOffset) * 4;
             const playable = isCardPlayable(card);
             const isSelected = selectedCardId === card.id;
             const isHovered = hoveredCardId === card.id;

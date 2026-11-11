@@ -2784,18 +2784,6 @@ input:focus {
     font-size: 0.88rem;
   }
 
-  .fan-hand--overflowing {
-    flex-wrap: wrap;
-    align-content: center;
-    justify-content: center;
-    gap: 6px 4px;
-    overflow-x: hidden;
-    overflow-y: auto;
-  }
-
-  .fan-hand--overflowing .fan-card-wrap {
-    margin-left: 0 !important;
-  }
 }
 
 /* ---------- Desktop tabletop composition ---------- */

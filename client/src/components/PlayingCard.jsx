@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { animate, motion, useMotionValue, useReducedMotion } from "framer-motion";
 import { CARD_BACK, getCardAsset } from "../lib/cards.js";
 
@@ -34,6 +34,14 @@ function PlayingCardComponent({
   onDragEnd
 }) {
   const reduced = useReducedMotion();
+  const [touchPrimary, setTouchPrimary] = useState(() => window.matchMedia("(pointer: coarse)").matches);
+  useEffect(() => {
+    const query = window.matchMedia("(pointer: coarse)");
+    const update = () => setTouchPrimary(query.matches);
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+  const canDrag = isDraggable && !touchPrimary;
   const x = useMotionValue(0);
   const dragY = useMotionValue(0);
   const buttonRef = useRef(null);
@@ -67,7 +75,7 @@ function PlayingCardComponent({
       ].join(" ")}
       data-card-id={card?.id}
       ref={buttonRef}
-      style={{ x, y: dragY, touchAction: isDraggable ? "none" : "auto" }}
+      style={{ x, y: dragY, touchAction: canDrag ? "none" : "pan-x pan-y" }}
       disabled={disabled || isTableCard || !onClick}
       onClick={(event) => { if (!suppressClick.current && !isPending) onClick?.(event); }}
       onMouseEnter={onMouseEnter}
@@ -82,7 +90,7 @@ function PlayingCardComponent({
       }}
       whileHover={!disabled && !isPending ? { y: y - 10 } : undefined}
       whileTap={!disabled && !isPending ? { y: y - 12 } : undefined}
-      drag={isDraggable && !disabled}
+      drag={canDrag && !disabled}
       dragSnapToOrigin={false}
       dragElastic={0.08}
       dragMomentum={false}

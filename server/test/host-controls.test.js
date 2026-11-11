@@ -28,6 +28,23 @@ function finishRound(manager, room, host) {
   assert.equal(room.status, "ROUND_SUMMARY");
 }
 
+test("leaving preserves an active hand and removes a player between rounds", () => {
+  const { manager, room } = table();
+  const player = room.players.find(entry => entry.seatIndex === 1);
+  const hand = player.hand.map(card => card.id);
+  const activeResult = manager.leaveRoom(room.roomId, player.playerId);
+  assert.equal(activeResult.removed, false);
+  assert.equal(player.isOnline, false);
+  assert.equal(player.socketId, null);
+  assert.deepEqual(player.hand.map(card => card.id), hand);
+  assert(room.players.includes(player));
+
+  room.status = "ROUND_SUMMARY";
+  const summaryResult = manager.leaveRoom(room.roomId, player.playerId);
+  assert.equal(summaryResult.removed, true);
+  assert(!room.players.includes(player));
+});
+
 test("host approvals reserve exactly one seat without changing the current round", () => {
   const { manager, room, host } = table();
   const waiting = join(manager, room, "Waiting");

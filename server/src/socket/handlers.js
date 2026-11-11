@@ -225,7 +225,7 @@ export function registerSocketHandlers(io) {
         leftRoom = roomManager.leaveRoom(roomId, playerId);
       } catch (error) {
         emitError(socket, error.message, "LEAVE_REJECTED");
-        acknowledge?.({ success: false });
+        acknowledge?.({ success: false, message: error.message });
         return;
       }
 

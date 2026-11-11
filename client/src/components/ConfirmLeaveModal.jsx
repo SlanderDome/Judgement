@@ -1,14 +1,16 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 
-export function ConfirmLeaveModal({ open, onCancel, onConfirm }) {
+export function ConfirmLeaveModal({ open, isConnected, onCancel, onConfirm }) {
   const [leaving, setLeaving] = useState(false);
+  const [error, setError] = useState("");
   const leavingRef = useRef(false);
   const cancelRef = useRef(null);
 
   useEffect(() => {
     if (!open) {
       setLeaving(false);
+      setError("");
       leavingRef.current = false;
       return undefined;
     }
@@ -16,7 +18,7 @@ export function ConfirmLeaveModal({ open, onCancel, onConfirm }) {
     cancelRef.current?.focus();
 
     function handleKey(event) {
-      if (event.key === "Escape") {
+      if (event.key === "Escape" && !leavingRef.current) {
         event.preventDefault();
         onCancel();
       }
@@ -26,14 +28,23 @@ export function ConfirmLeaveModal({ open, onCancel, onConfirm }) {
     return () => window.removeEventListener("keydown", handleKey);
   }, [open, onCancel]);
 
-  function handleConfirm() {
+  async function handleConfirm(localOnly = false) {
     // Synchronous guard. Three rapid clicks in one tick must not fire onConfirm thrice.
     if (leavingRef.current) {
       return;
     }
     leavingRef.current = true;
     setLeaving(true);
-    onConfirm();
+    setError("");
+    try {
+      const result = await onConfirm({ localOnly });
+      if (!result?.success) setError(result?.message ?? "Unable to leave. Please try again.");
+    } catch {
+      setError("Unable to leave. Please try again.");
+    } finally {
+      leavingRef.current = false;
+      setLeaving(false);
+    }
   }
 
   return (
@@ -47,7 +58,7 @@ export function ConfirmLeaveModal({ open, onCancel, onConfirm }) {
           transition={{ duration: 0.14 }}
           onMouseDown={(event) => {
     // Backdrop press closes the modal. It never leaves the game.
-            if (event.target === event.currentTarget) {
+            if (event.target === event.currentTarget && !leavingRef.current) {
               onCancel();
             }
           }}
@@ -65,7 +76,8 @@ export function ConfirmLeaveModal({ open, onCancel, onConfirm }) {
             <div className="overlay-head">
               <div>
                 <h2 id="confirm-leave-title">Leave game?</h2>
-                <p className="confirm-body">Are you sure you want to leave this game?</p>
+                <p className="confirm-body">{isConnected ? "Are you sure you want to leave this game?" : "You are disconnected. Leave this device now; the server cannot confirm your departure."}</p>
+                {error && <p className="host-error" role="alert">{error} You can also leave on this device without server confirmation.</p>}
               </div>
             </div>
 
@@ -82,11 +94,12 @@ export function ConfirmLeaveModal({ open, onCancel, onConfirm }) {
               <button
                 type="button"
                 className="btn-danger"
-                onClick={handleConfirm}
+                onClick={() => handleConfirm()}
                 disabled={leaving}
               >
                 {leaving ? "Leaving" : "Leave game"}
               </button>
+              {error && <button type="button" className="btn-ghost" disabled={leaving} onClick={() => handleConfirm(true)}>Leave on this device</button>}
             </div>
           </motion.div>
         </motion.div>

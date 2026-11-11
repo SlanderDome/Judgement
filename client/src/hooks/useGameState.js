@@ -66,6 +66,8 @@ export function useGameState() {
   const [roomSynced, setRoomSynced] = useState(false);
   const [sessionConflict, setSessionConflict] = useState(false);
   const roomStateRef = useRef(null);
+  const departedRoomsRef = useRef(new Set());
+  const leaveInFlightRef = useRef(false);
 
   function getPlayerCount(state) {
     return state?.players?.length;
@@ -103,6 +105,7 @@ export function useGameState() {
 
   useEffect(() => {
     function handleRoomState(payload) {
+      if (departedRoomsRef.current.has(payload.roomState?.roomId)) return;
       const nextRoomState = getClientTimerState(payload.roomState, payload.serverNow);
       const previousRoomState = roomStateRef.current;
 
@@ -155,6 +158,7 @@ export function useGameState() {
     }
 
     function handleRoomCreated(payload) {
+      if (departedRoomsRef.current.has(payload.roomId)) return;
       trackEvent("room_created", {
         ...(getPlayerCount(roomStateRef.current) != null
           ? { player_count: getPlayerCount(roomStateRef.current) }
@@ -170,6 +174,7 @@ export function useGameState() {
     }
 
     function handleRoomJoined(payload) {
+      if (departedRoomsRef.current.has(payload.roomId)) return;
       if (payload.reconnected) {
         trackEvent("player_reconnected");
       } else {
@@ -279,6 +284,7 @@ export function useGameState() {
 
   function joinRoom(roomId, nickname) {
     const formattedRoomId = roomId.trim().toUpperCase();
+    departedRoomsRef.current.delete(formattedRoomId);
     socket.emit("room:join", {
       roomId: formattedRoomId,
       nickname,
@@ -286,21 +292,25 @@ export function useGameState() {
     });
   }
 
-  function leaveRoom() {
-    const wasInActiveGame =
-      roomState && !["LOBBY", "GAME_OVER"].includes(roomState.status);
-
-    if (socket.connected) {
-      socket.emit("room:leave", {
-        roomId: roomState?.roomId,
-        playerId: clientPlayerId
-      }, (response) => {
-        if (response?.success && wasInActiveGame) {
-          trackEvent("game_abandoned", { reason: "player_left" });
-        }
+  async function leaveRoom({ localOnly = false } = {}) {
+    const current = roomStateRef.current;
+    if (!current || leaveInFlightRef.current) return { success: false, message: "A leave request is already in progress." };
+    leaveInFlightRef.current = true;
+    let confirmed = false;
+    if (socket.connected && !localOnly) {
+      const result = await new Promise(resolve => {
+        socket.timeout(6000).emit("room:leave", { roomId: current.roomId, playerId: clientPlayerId }, (error, response) => {
+          resolve(error ? { success: false, message: "No confirmation received. Reconnect or try again." } : response ?? { success: false, message: "The server did not confirm your departure." });
+        });
       });
+      if (!result.success) {
+        leaveInFlightRef.current = false;
+        return result;
+      }
+      confirmed = true;
     }
 
+    departedRoomsRef.current.add(current.roomId);
     clearSession();
     roomStateRef.current = null;
     setRoomState(null);
@@ -308,6 +318,9 @@ export function useGameState() {
     setSessionConflict(false);
     setClientPlayerId(null);
     setErrorMessage("");
+    leaveInFlightRef.current = false;
+    if (confirmed && !["LOBBY", "GAME_OVER"].includes(current.status)) trackEvent("game_abandoned", { reason: "player_left" });
+    return { success: true, confirmed };
   }
 
   function takeSeat(seatIndex) {

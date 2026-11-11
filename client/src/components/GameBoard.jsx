@@ -217,11 +217,6 @@ export function GameBoard({
     }
   }, [roomState.gameConfig.roundNumber]);
   useEffect(() => {
-    if (status !== "ROUND_SUMMARY") return;
-    // Bring the five-second decision into view after playing from the lower hand.
-    window.scrollTo({ top: 0, behavior: "instant" });
-  }, [status]);
-  useEffect(() => {
     const key = `${roomState.roomId}:${roomState.gameConfig.roundNumber}`;
     if (isSummary && adminOpen && !isPaused && !hostPending && summaryHoldRef.current !== key) {
       summaryHoldRef.current = key;
@@ -414,6 +409,7 @@ export function GameBoard({
 
       <ConfirmLeaveModal
         open={leaveOpen}
+        isConnected={isConnected}
         onCancel={() => setLeaveOpen(false)}
         onConfirm={onLeaveRoom}
       />
