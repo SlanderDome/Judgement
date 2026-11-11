@@ -16,9 +16,9 @@ function PlayerSeatComponent({
   const reduced = useReducedMotion();
   const hue = ((player.seatIndex ?? 0) * 137.508) % 360;
   const hasBid = player.currentBid != null;
-  const isOffline = !player.isOnline;
+  const isOffline = !player.isOnline && !player.isBot;
   const isPending = player.pendingNextRound || player.isActiveInGame === false;
-  const seatStatus = isOffline
+  const seatStatus = player.isBot ? "Bot" : isOffline
     ? "Offline"
     : isPending
       ? "Next round"

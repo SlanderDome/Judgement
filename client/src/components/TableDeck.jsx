@@ -1,6 +1,6 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { CARD_BACK } from "../lib/cards.js";
-import { dealerPlayer, isRoundActive, seatDisplaySlot, seatUnitVector, seatedPlayers } from "../lib/seats.js";
+import { dealerPlayer, isRoundActive, seatedPlayers } from "../lib/seats.js";
 
 export const DEAL_MS = 2500;
 
@@ -19,7 +19,7 @@ const STACK = 4;
 // read as "cards going around". Keeps big rounds from spawning 40+ motion nodes.
 const MAX_FLIGHTS = 24;
 
-function buildFlights(roomState, total, viewerSeat) {
+function buildFlights(roomState, seatPosition) {
   const seated = seatedPlayers(roomState);
   if (seated.length === 0) return [];
   const dealer = dealerPlayer(roomState);
@@ -36,7 +36,7 @@ function buildFlights(roomState, total, viewerSeat) {
   let i = 0;
   for (let pass = 0; pass < passes; pass += 1) {
     for (const player of order) {
-      const v = seatUnitVector(seatDisplaySlot(player.seatIndex, viewerSeat, total), total);
+      const v = seatPosition(player.seatIndex);
       flights.push({
         key: `${player.playerId}-${pass}`,
         left: `${(50 + v.x * LAND_RADIUS).toFixed(2)}%`,
@@ -49,7 +49,7 @@ function buildFlights(roomState, total, viewerSeat) {
   return flights;
 }
 
-export function TableDeck({ roomState, dealPhase, total, viewerSeat }) {
+export function TableDeck({ roomState, dealPhase, seatPosition }) {
   const reduced = useReducedMotion();
   if (!isRoundActive(roomState.status)) {
     return null;
@@ -58,7 +58,7 @@ export function TableDeck({ roomState, dealPhase, total, viewerSeat }) {
   const dealing = dealPhase === "dealing";
   const dealer = dealerPlayer(roomState);
   const dv = dealer
-    ? seatUnitVector(seatDisplaySlot(dealer.seatIndex, viewerSeat, total), total)
+    ? seatPosition(dealer.seatIndex)
     : { x: 0, y: 0.9 };
   const atDealer = {
     left: `${(50 + dv.x * DEALER_RADIUS).toFixed(2)}%`,
@@ -66,7 +66,7 @@ export function TableDeck({ roomState, dealPhase, total, viewerSeat }) {
   };
   const atRest = { left: `${REST_LEFT}%`, top: `${REST_TOP}%` };
 
-  const flights = dealing && !reduced ? buildFlights(roomState, total, viewerSeat) : [];
+  const flights = dealing && !reduced ? buildFlights(roomState, seatPosition) : [];
 
   return (
     <>

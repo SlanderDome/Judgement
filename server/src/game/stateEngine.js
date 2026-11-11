@@ -240,8 +240,8 @@ export function markPlayerLeft(room, playerId) {
 
   player.isOnline = false;
   player.socketId = null;
-  player.isActiveInGame = false;
-  player.hasLeft = true;
+  player.isBot = true;
+  player.isAdmin = false;
   room.updatedAt = Date.now();
   return player;
 }
@@ -249,7 +249,7 @@ export function markPlayerLeft(room, playerId) {
 export function reconnectPlayer(room, playerId, socketId, nickname) {
   const player = room.players.find((entry) => entry.playerId === playerId);
 
-  if (!player) {
+  if (!player || player.isBot) {
     return null;
   }
 
@@ -460,18 +460,16 @@ function resolveTrick(room) {
       player.score += scorePlayerForRound(player);
     });
 
-    // Spectators and approved reservations are room members, not departed players.
-    room.players = room.players.filter((player) => !player.hasLeft);
-
     room.currentRound.roundSummary = {
       scores: getSeatedPlayers(room).map((player) => ({
         playerId: player.playerId,
-        nickname: player.nickname,
+        nickname: player.isBot ? `${player.nickname} (bot)` : player.nickname,
         score: player.score,
         bid: player.currentBid,
         tricksWon: player.tricksWon
       }))
     };
+    room.players = room.players.filter((player) => !player.isBot);
     room.status = ROOM_STATUS.ROUND_SUMMARY;
     // Scoreboard is shown, then the next round starts automatically.
     room.timer = { endsAt: Date.now() + ROUND_SUMMARY_MS, durationMs: ROUND_SUMMARY_MS };
@@ -621,7 +619,7 @@ export function handleTurnTimeout(room) {
 }
 
 export function getNextRoundPlayers(room) {
-  return room.players.filter(player => !player.hasLeft && Number.isInteger(player.seatIndex) && (player.isActiveInGame || player.pendingNextRound));
+  return room.players.filter(player => !player.hasLeft && !player.isBot && Number.isInteger(player.seatIndex) && (player.isActiveInGame || player.pendingNextRound));
 }
 
 export function getNextRoundSetup(room) {
@@ -872,10 +870,11 @@ export function sanitizeRoomForPlayer(room, playerId) {
     timer: room.timer,
     players: room.players.map((player) => ({
       playerId: player.playerId,
-      nickname: player.nickname,
+      nickname: player.isBot ? `${player.nickname} (bot)` : player.nickname,
       seatIndex: player.seatIndex,
       isAdmin: player.isAdmin,
       isOnline: player.isOnline,
+      isBot: player.isBot === true,
        isActiveInGame: player.isActiveInGame,
        pendingNextRound: player.pendingNextRound === true,
       score: player.score,

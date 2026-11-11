@@ -160,11 +160,21 @@ export class RoomManager {
       throw new Error("You are not in this room.");
     }
 
-    if (["LOBBY", "ROUND_SUMMARY", "GAME_OVER"].includes(room.status)) {
-      return { room, player: removePlayer(room, playerId), removed: true };
+    if (player.isBot) throw new Error("You have already left this room.");
+    const active = !["LOBBY", "ROUND_SUMMARY", "GAME_OVER"].includes(room.status);
+    const takeover = active && Number.isInteger(player.seatIndex) && player.isActiveInGame !== false;
+    if (takeover) markPlayerLeft(room, playerId);
+    else if (active) {
+      room.players = room.players.filter(entry => entry !== player);
+      room.updatedAt = Date.now();
+    } else removePlayer(room, playerId);
+    if (room.adminPlayerId === playerId) {
+      const humans = room.players.filter(entry => !entry.isBot);
+      const next = humans.find(entry => entry.isOnline) ?? humans[0];
+      room.adminPlayerId = next?.playerId ?? null;
+      room.players.forEach(entry => { entry.isAdmin = entry === next; });
     }
-
-    return { room, player: markPlayerLeft(room, playerId), removed: false };
+    return { room, player, removed: !takeover };
   }
 
   kickPlayer(roomId, adminPlayerId, targetPlayerId, context = {}) {

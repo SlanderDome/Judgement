@@ -1,5 +1,5 @@
 import { RoomManager } from "../game/roomManager.js";
-import { handleTurnTimeout } from "../game/stateEngine.js";
+import { getCurrentPlayer, handleTurnTimeout } from "../game/stateEngine.js";
 
 const roomManager = new RoomManager();
 const roomTimeouts = new Map();
@@ -35,7 +35,8 @@ function scheduleRoomTimeout(io, roomId) {
   }
 
   const expectedEndsAt = room.timer.endsAt;
-  const delayMs = Math.max(0, expectedEndsAt - Date.now());
+  const botTurn = ["BIDDING", "TRICK_PLAYING"].includes(room.status) && getCurrentPlayer(room)?.isBot;
+  const delayMs = botTurn ? Math.min(500, Math.max(0, expectedEndsAt - Date.now())) : Math.max(0, expectedEndsAt - Date.now());
   const timeoutId = setTimeout(() => {
     roomTimeouts.delete(roomId);
 
@@ -52,6 +53,7 @@ function scheduleRoomTimeout(io, roomId) {
       console.error("Turn timeout failed", error);
     }
   }, delayMs);
+  timeoutId.unref?.();
 
   roomTimeouts.set(roomId, timeoutId);
 }
@@ -68,6 +70,10 @@ export function registerSocketHandlers(io) {
   io.on("connection", (socket) => {
     // Every room action must come from the socket currently owning that seat.
     socket.use(([event, payload, acknowledge], next) => {
+      if (event === "room:leave" && socket.data.departures?.has(`${payload?.roomId}:${payload?.playerId}`)) {
+        reply(acknowledge, { success: true, alreadyLeft: true });
+        return;
+      }
       if (!event.startsWith("game:") && !["seat:take", "seat:leave", "room:kick", "room:admit", "room:leave"].includes(event)) {
         return next();
       }
@@ -110,6 +116,7 @@ export function registerSocketHandlers(io) {
         socketId: socket.id
       });
 
+      socket.data.departures?.delete(`${room.roomId}:${player.playerId}`);
       socket.join(room.roomId);
       emitRoomState(io, room);
       scheduleRoomTimeout(io, room.roomId);
@@ -123,7 +130,7 @@ export function registerSocketHandlers(io) {
     socket.on("room:join", ({ roomId, nickname, playerId, resume } = {}) => {
       try {
         const existingRoom = roomManager.getRoom(roomId);
-        if (resume && existingRoom && !existingRoom.players.some((entry) => entry.playerId === playerId)) {
+        if (resume && existingRoom && !existingRoom.players.some((entry) => entry.playerId === playerId && !entry.isBot)) {
           emitError(socket, "Your seat is no longer in this room.", "SESSION_INVALID");
           return;
         }
@@ -137,6 +144,7 @@ export function registerSocketHandlers(io) {
           socketId: socket.id
         });
 
+        socket.data.departures?.delete(`${room.roomId}:${player.playerId}`);
         if (previousSocketId && previousSocketId !== socket.id) {
           io.to(previousSocketId).emit("room:session_conflict", {
             message: "This seat was reconnected in another tab or device. Reload this tab to reclaim it."
@@ -229,6 +237,8 @@ export function registerSocketHandlers(io) {
         return;
       }
 
+      socket.data.departures ??= new Set();
+      socket.data.departures.add(`${roomId}:${playerId}`);
       socket.leave(leftRoom.room.roomId);
       emitRoomState(io, leftRoom.room);
       scheduleRoomTimeout(io, leftRoom.room.roomId);

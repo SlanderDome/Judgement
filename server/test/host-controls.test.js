@@ -28,21 +28,69 @@ function finishRound(manager, room, host) {
   assert.equal(room.status, "ROUND_SUMMARY");
 }
 
-test("leaving preserves an active hand and removes a player between rounds", () => {
+test("leaving converts an active hand to a bot and removes it at round end", () => {
   const { manager, room } = table();
   const player = room.players.find(entry => entry.seatIndex === 1);
   const hand = player.hand.map(card => card.id);
   const activeResult = manager.leaveRoom(room.roomId, player.playerId);
   assert.equal(activeResult.removed, false);
   assert.equal(player.isOnline, false);
+  assert.equal(player.isBot, true);
+  assert.equal(player.isActiveInGame, true);
   assert.equal(player.socketId, null);
   assert.deepEqual(player.hand.map(card => card.id), hand);
   assert(room.players.includes(player));
-
-  room.status = "ROUND_SUMMARY";
-  const summaryResult = manager.leaveRoom(room.roomId, player.playerId);
-  assert.equal(summaryResult.removed, true);
+  finishRound(manager, room, room.players.find(entry => entry.isAdmin));
   assert(!room.players.includes(player));
+  assert(room.currentRound.roundSummary.scores.some(entry => entry.nickname.includes("(bot)")));
+});
+
+test("host exit transfers control without changing the current turn or allowing bot reconnection", () => {
+  const { manager, room, host } = table(3);
+  manager.startBidding(room.roomId, host.playerId);
+  const current = getCurrentPlayer(room).playerId;
+  const hand = host.hand.map(card => card.id);
+  manager.leaveRoom(room.roomId, host.playerId);
+  assert.equal(getCurrentPlayer(room).playerId, current);
+  assert.equal(host.isBot, true);
+  assert.deepEqual(host.hand.map(card => card.id), hand);
+  const replacement = room.players.find(player => player.playerId === room.adminPlayerId);
+  assert(replacement && !replacement.isBot && replacement.isAdmin);
+  const rejoin = manager.joinRoom({ roomId: room.roomId, playerId: host.playerId, nickname: "Return", socketId: "new-socket" });
+  assert.notEqual(rejoin.player.playerId, host.playerId);
+  assert.equal(host.socketId, null);
+});
+
+test("a bot round finishes and next round pauses when only one human remains", () => {
+  const { manager, room, host } = table();
+  const other = room.players.find(player => player.playerId !== host.playerId);
+  manager.leaveRoom(room.roomId, other.playerId);
+  finishRound(manager, room, host);
+  assert.equal(room.status, "ROUND_SUMMARY");
+  handleTurnTimeout(room);
+  assert.equal(room.paused, true);
+  assert.equal(room.status, "ROUND_SUMMARY");
+});
+
+test("takeover keeps submitted bids and played cards without advancing another turn", () => {
+  const { manager, room, host } = table(3);
+  manager.startBidding(room.roomId, host.playerId);
+  const bidder = getCurrentPlayer(room);
+  manager.submitBid(room.roomId, bidder.playerId, getLegalBids(room)[0]);
+  const nextBidder = getCurrentPlayer(room).playerId;
+  const originalBid = bidder.currentBid;
+  manager.leaveRoom(room.roomId, bidder.playerId);
+  assert.equal(room.currentRound.bids[bidder.playerId], originalBid);
+  assert.equal(getCurrentPlayer(room).playerId, nextBidder);
+  while (room.status === "BIDDING") manager.submitBid(room.roomId, getCurrentPlayer(room).playerId, getLegalBids(room)[0]);
+  if (getCurrentPlayer(room).isBot) manager.playCard(room.roomId, getCurrentPlayer(room).playerId, getLegalCards(room)[0].id);
+  const actor = getCurrentPlayer(room);
+  manager.playCard(room.roomId, actor.playerId, getLegalCards(room)[0].id);
+  const nextActor = getCurrentPlayer(room).playerId;
+  const played = structuredClone(room.currentRound.currentTrick.cardsPlayed);
+  manager.leaveRoom(room.roomId, actor.playerId);
+  assert.deepEqual(room.currentRound.currentTrick.cardsPlayed, played);
+  assert.equal(getCurrentPlayer(room).playerId, nextActor);
 });
 
 test("host approvals reserve exactly one seat without changing the current round", () => {

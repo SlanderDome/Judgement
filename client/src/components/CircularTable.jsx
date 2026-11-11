@@ -8,8 +8,7 @@ const SUIT_MARKS = { SPADES: "♠", HEARTS: "♥", CLUBS: "♣", DIAMONDS: "♦"
 
 // CSS multiplies this unit vector by the table's --seat-radius-*, so the ring
 // re-proportions per breakpoint without touching JS.
-function seatVars(index, total) {
-  const { x, y } = seatUnitVector(index, total);
+function seatVars({ x, y }) {
   return { "--seat-x": x.toFixed(4), "--seat-y": y.toFixed(4) };
 }
 
@@ -39,8 +38,17 @@ export function CircularTable({
   // Spin the ring so the viewer's own seat sits bottom-centre. Spectators keep
   // the raw ring order.
   const viewerSeat = occupied.find((player) => player.playerId === clientPlayerId)?.seatIndex;
+  const orderedSeats = occupied.map(player => player.seatIndex).sort((a, b) => a - b);
+  const viewerIndex = orderedSeats.indexOf(viewerSeat);
+  const compact = roomState.status !== "LOBBY";
+  function seatPosition(seatIndex) {
+    if (!compact) return seatUnitVector(seatDisplaySlot(seatIndex, viewerSeat, total), total);
+    const index = orderedSeats.indexOf(seatIndex);
+    const angle = (viewerIndex >= 0 ? Math.PI / 2 + (index - viewerIndex) * 2 * Math.PI / orderedSeats.length : -Math.PI / 2 + index * 2 * Math.PI / orderedSeats.length);
+    return { x: Math.cos(angle), y: Math.sin(angle) };
+  }
   const bidSeat = occupied.find(player => player.playerId === bidEffect?.playerId)?.seatIndex;
-  const bidTarget = Number.isInteger(bidSeat) ? seatUnitVector(seatDisplaySlot(bidSeat, viewerSeat, total), total) : null;
+  const bidTarget = Number.isInteger(bidSeat) ? seatPosition(bidSeat) : null;
 
   return (
     <div className="poker-table" ref={dropZoneRef} role="group" aria-label="Table seats" data-ace-effect={aceEffect?.kind}>
@@ -53,11 +61,12 @@ export function CircularTable({
       <div className="poker-table__center">{centerSlot}</div>
       {bidEffect && bidTarget && <div key={bidEffect.id} className="room-bid-flight" style={{ "--bid-x": bidTarget.x, "--bid-y": bidTarget.y }} aria-hidden="true"><span>{bidEffect.value}</span></div>}
 
-      <TableDeck roomState={roomState} dealPhase={dealPhase} total={total} viewerSeat={viewerSeat} />
+      <TableDeck roomState={roomState} dealPhase={dealPhase} seatPosition={seatPosition} />
 
-      {seats.map((seatIndex) => {
+      {(compact ? orderedSeats : seats).map((seatIndex) => {
         const occupant = bySeat.get(seatIndex);
         const displaySlot = seatDisplaySlot(seatIndex, viewerSeat, total);
+        const position = seatPosition(seatIndex);
         const showFan =
           occupant &&
           roundActive &&
@@ -65,16 +74,16 @@ export function CircularTable({
           occupant.playerId !== clientPlayerId &&
           (occupant.handCount ?? 0) > 0;
         // Top-half seats fan upward. Their "below" would land on the trick pile.
-        const fanAbove = seatUnitVector(displaySlot, total).y < -0.15;
+        const fanAbove = position.y < -0.15;
 
         return (
           <div
             className="table-seat"
             key={seatIndex}
             data-slot={displaySlot}
-            data-side={Math.abs(seatUnitVector(displaySlot, total).x) > .99 ? (seatUnitVector(displaySlot, total).x < 0 ? "left" : "right") : undefined}
-            data-pole={Math.abs(seatUnitVector(displaySlot, total).y) > .99 ? "true" : undefined}
-            style={seatVars(displaySlot, total)}
+            data-side={Math.abs(position.x) > .99 ? (position.x < 0 ? "left" : "right") : undefined}
+            data-pole={Math.abs(position.y) > .99 ? "true" : undefined}
+            style={seatVars(position)}
           >
             {occupant ? (
               <>
@@ -86,7 +95,7 @@ export function CircularTable({
                   isDealer={occupant.playerId === dealerPlayerId}
                   isHost={occupant.playerId === roomState.adminPlayerId}
                   isRecentlyActed={occupant.playerId === recentlyActedPlayerId}
-                  isDimmed={!occupant.isOnline}
+                  isDimmed={!occupant.isOnline && !occupant.isBot}
                   timerEndsAt={occupant.playerId === currentTurnPlayerId ? timerEndsAt : null}
                   timerDurationMs={timerDurationMs}
                 />

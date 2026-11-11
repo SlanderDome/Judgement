@@ -32,6 +32,49 @@ test("room exit acknowledges departure and updates the remaining players", async
   assert.equal(response.success, true);
   const [update] = await remaining;
   assert.equal(update.roomState.players.some(entry => entry.playerId === player.playerId), false);
-  const rejected = await new Promise(resolve => guest.emit("room:leave", { roomId: room.roomId, playerId: player.playerId }, resolve));
-  assert.equal(rejected.success, false);
+  const retry = await new Promise(resolve => guest.emit("room:leave", { roomId: room.roomId, playerId: player.playerId }, resolve));
+  assert.equal(retry.success, true);
+  assert.equal(retry.alreadyLeft, true);
+});
+
+test("leaving during bidding starts exactly one bot action and preserves the hand", async (t) => {
+  const http = createServer();
+  const io = new Server(http);
+  registerSocketHandlers(io);
+  http.listen(0, "127.0.0.1");
+  await once(http, "listening");
+  const url = `http://127.0.0.1:${http.address().port}`;
+  const host = connect(url, { forceNew: true });
+  const guest = connect(url, { forceNew: true });
+  t.after(async () => { host.disconnect(); guest.disconnect(); await new Promise(resolve => io.close(resolve)); });
+  await Promise.all([once(host, "connect"), once(guest, "connect")]);
+  let pending = once(host, "room:created");
+  host.emit("room:create", { nickname: "Host" });
+  const [room] = await pending;
+  pending = once(guest, "room:joined");
+  guest.emit("room:join", { roomId: room.roomId, nickname: "Guest" });
+  const [player] = await pending;
+  pending = once(host, "room:state_update");
+  host.emit("seat:take", { roomId: room.roomId, playerId: room.playerId, seatIndex: 0 });
+  await pending;
+  pending = once(host, "room:state_update");
+  guest.emit("seat:take", { roomId: room.roomId, playerId: player.playerId, seatIndex: 1 });
+  await pending;
+  const request = (socket, event, payload) => new Promise(resolve => socket.emit(event, payload, resolve));
+  assert.equal((await request(host, "game:start", { roomId: room.roomId, playerId: room.playerId, cardsInRound: 1, trumpSuit: "SPADES" })).success, true);
+  assert.equal((await request(host, "game:start_bidding", { roomId: room.roomId, playerId: room.playerId })).success, true);
+  const botBid = new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("Bot did not bid")), 3000);
+    host.on("room:state_update", function onState(payload) {
+      if (payload.roomState.currentRound.bids[player.playerId] === undefined) return;
+      clearTimeout(timer); host.off("room:state_update", onState); resolve(payload.roomState);
+    });
+  });
+  assert.equal((await request(guest, "room:leave", { roomId: room.roomId, playerId: player.playerId })).success, true);
+  assert.equal((await request(guest, "room:leave", { roomId: room.roomId, playerId: player.playerId })).alreadyLeft, true);
+  const state = await botBid;
+  assert.equal(state.players.find(entry => entry.playerId === player.playerId).isBot, true);
+  assert.equal(state.players.find(entry => entry.playerId === player.playerId).handCount, 1);
+  assert.equal(Object.keys(state.currentRound.bids).length, 1);
+  assert.equal(state.gameConfig.currentTurnIndex, 0);
 });

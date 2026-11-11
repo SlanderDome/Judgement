@@ -301,6 +301,7 @@ export function GameBoard({
         <Scoreboard roomState={roomState} clientPlayerId={clientPlayerId} action={<>
           {isSummary ? <>
             <span className="room-summary-timer">{isPaused ? "Next round paused at" : "Next round in"} <RoomCountdown timer={roomState.timer} paused={isPaused} /></span>
+            {isPaused && (roomState.nextRoundSetup?.playerCount ?? 0) < 2 && <span className="chip">Waiting for at least 2 players for the next round</span>}
             {isAdmin && <>
               <button type="button" className="btn-ghost" disabled={!!hostPending || !connected} onClick={() => runHostAction("pause", () => onSetPaused(!isPaused, hostContext))}>{hostPending === "pause" ? "Confirming…" : isPaused ? "Resume countdown" : "Pause next round"}</button>
               <button type="button" className="btn-primary" disabled={!!hostPending || !connected} onClick={openHostControls}>Manage players</button>
